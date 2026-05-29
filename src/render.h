@@ -5,5 +5,6 @@
 
 void render_line(struct Context *ctx, int y);
 void render_statusline(struct Context *ctx);
+void render(struct Context *ctx);
 
 #endif

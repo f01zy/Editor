@@ -10,16 +10,18 @@
 void configure_context(struct Context *ctx) {
   ioctl(STDIN_FILENO, TIOCGWINSZ, &ctx->win);
   tcgetattr(STDIN_FILENO, &ctx->backup);
-  ctx->mode          = MODE_NORMAL;
   ctx->conf          = ctx->backup;
   ctx->conf.c_iflag |= IXOFF;
   ctx->conf.c_iflag &= ~ICRNL;
   ctx->conf.c_lflag &= ~ECHO;
   ctx->conf.c_lflag &= ~ISIG;
   ctx->conf.c_lflag &= ~ICANON;
+  ctx->mode          = MODE_NORMAL;
   add_line(ctx, 0);
   tcsetattr(STDIN_FILENO, TCSANOW, &ctx->conf);
 }
+
+size_t get_max_x(struct Line *line) { return line->len ? line->len - 1 : 0; }
 
 void change_mode(struct Context *ctx, enum Mode mode) {
   enum CursorStyle style;
@@ -84,13 +86,12 @@ void write_to_line(struct Context *ctx, int y, int x, char ch) {
 
 enum RemoveResult remove_from_line(struct Context *ctx, int y, int x) {
   struct Line *line = ctx->buf[y];
+  if (x == 0 && y == 0) return REMOVE_NOTHING;
   if (x == 0) {
-    if (y == 0) return REMOVE_NOTHING;
     struct Line *prev = ctx->buf[y - 1];
     if (line->len > 0) {
-      int len  = prev->len + line->len;
-      int diff = prev->size - prev->len - 1;
-      if (diff < line->len) {
+      int len = prev->len + line->len;
+      if (prev->size - prev->len - 1 < line->len) {
         prev->size = len;
         prev->buf  = (char *)realloc(prev->buf, prev->size);
       }
@@ -122,5 +123,22 @@ void line_break(struct Context *ctx) {
     line->len            = ctx->x;
     line->buf[line->len] = '\0';
     next->buf[next->len] = '\0';
+  }
+}
+
+void configure_frame(struct Context *ctx, char **frame) {
+  for (int i = 0; i < ctx->win.ws_row; i++) {
+    int y = ctx->offsetY + i;
+    if (y >= ctx->len) {
+      for (int j = 0; j < ctx->win.ws_col; j++) {
+        frame[i][j] = ' ';
+      }
+      continue;
+    }
+    struct Line *line = ctx->buf[y];
+    for (int j = 0; j < ctx->win.ws_col; j++) {
+      int x       = ctx->offsetX + j;
+      frame[i][j] = x < line->len ? line->buf[x] : ' ';
+    }
   }
 }
