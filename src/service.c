@@ -23,12 +23,26 @@ void configure_context(struct Context *ctx) {
 
 size_t get_max_x(struct Line *line) { return line->len ? line->len - 1 : 0; }
 
+void check_offset(struct Context *ctx) {
+  if (ctx->x < ctx->offsetX) {
+    ctx->offsetX = ctx->x;
+  } else if (ctx->x >= ctx->offsetX + ctx->win.ws_col) {
+    ctx->offsetX = ctx->x - ctx->win.ws_col + 1;
+  }
+
+  if (ctx->y < ctx->offsetY) {
+    ctx->offsetY = ctx->y;
+  } else if (ctx->y >= ctx->offsetY + ctx->win.ws_row) {
+    ctx->offsetY = ctx->y - ctx->win.ws_row + 1;
+  }
+}
+
 void change_mode(struct Context *ctx, enum Mode mode) {
   enum CursorStyle style;
   if (mode == MODE_NORMAL) style = CURSOR_BLOCK_STATIC;
   if (mode == MODE_INSERT) style = CURSOR_LINE_STATIC;
   ctx->mode = mode;
-  set_cursor_type(style);
+  set_cursor_style(style);
 }
 
 void move_cursor_yx(int y, int x) {
@@ -37,7 +51,7 @@ void move_cursor_yx(int y, int x) {
   write(STDOUT_FILENO, buf, len);
 }
 
-void set_cursor_type(enum CursorStyle type) {
+void set_cursor_style(enum CursorStyle type) {
   char buf[MAX_BUFFER_SIZE];
   int len = snprintf(buf, sizeof(buf), ANSI_CURSOR_TYPE, type);
   write(STDOUT_FILENO, buf, len);

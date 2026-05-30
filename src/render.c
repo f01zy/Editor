@@ -6,11 +6,10 @@
 #include "render.h"
 #include "service.h"
 
-void render_line(struct Context *ctx, int y) {
+void render_line(char *buf, size_t len, int y) {
   move_cursor_yx(y, 0);
   ANSI_RESET_LINE;
-  struct Line *line = ctx->buf[y];
-  write(STDOUT_FILENO, line->buf, line->len);
+  write(STDOUT_FILENO, buf, len);
 }
 
 void render_statusline(struct Context *ctx) {
@@ -21,13 +20,13 @@ void render_statusline(struct Context *ctx) {
   } else if (ctx->mode == MODE_INSERT) {
     mode_label = "INSERT";
   }
-  int len = snprintf(buf, sizeof(buf), "-- %s -- %d:%d", mode_label, ctx->y + 1, ctx->x + 1);
+  int len = snprintf(buf, sizeof(buf), "-- %s -- %d/%d", mode_label, ctx->y, ctx->x);
   move_cursor_yx(ctx->win.ws_row - 1, 0);
+  ANSI_RESET_LINE;
   write(STDOUT_FILENO, buf, len);
-  move_cursor_yx(ctx->y, ctx->x);
 }
 
-void render(struct Context *ctx) {
+void render_buf(struct Context *ctx) {
   char **frame = (char **)malloc(ctx->win.ws_row * sizeof(char *));
   for (int i = 0; i < ctx->win.ws_row; i++) {
     frame[i] = (char *)malloc(ctx->win.ws_col);
@@ -37,7 +36,7 @@ void render(struct Context *ctx) {
     for (int i = 0; i < ctx->win.ws_row; i++) {
       for (int j = 0; j < ctx->win.ws_col; j++) {
         if (frame[i][j] != ctx->prev_frame[i][j]) {
-          render_line(ctx, ctx->offsetY + i);
+          render_line(frame[i], ctx->win.ws_col, i);
           break;
         }
       }
@@ -45,5 +44,10 @@ void render(struct Context *ctx) {
     free(ctx->prev_frame);
   }
   ctx->prev_frame = frame;
+}
+
+void render(struct Context *ctx) {
+  render_buf(ctx);
   render_statusline(ctx);
+  move_cursor_yx(ctx->y - ctx->offsetY, ctx->x - ctx->offsetX);
 }

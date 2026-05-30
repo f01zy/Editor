@@ -18,8 +18,8 @@ void handle_normal_mode(struct Context *ctx, int ch) {
   case 'h':
     if (ctx->x == 0 && ctx->y == 0) break;
     if (ctx->x == 0) {
-      ctx->y--;
       ctx->x = get_max_x(ctx->buf[ctx->y - 1]);
+      ctx->y--;
     } else {
       ctx->x--;
     }
@@ -59,13 +59,14 @@ void handle_normal_mode(struct Context *ctx, int ch) {
   case '$':
     ctx->x = len;
     break;
-  }
 
-  move_cursor_yx(ctx->y, ctx->x);
+  case '0':
+    ctx->x = 0;
+    break;
+  }
 }
 
 void handle_insert_mode(struct Context *ctx, int ch) {
-  bool handled = true;
   switch (ch) {
   case KEY_ENTER:
     line_break(ctx);
@@ -93,19 +94,15 @@ void handle_insert_mode(struct Context *ctx, int ch) {
     if (ch >= 32 && ch <= 126) {
       write_to_line(ctx, ctx->y, ctx->x, ch);
       ctx->x++;
-    } else {
-      handled = false;
     }
     break;
   }
-
-  if (handled) render(ctx);
-  move_cursor_yx(ctx->y, ctx->x);
 }
 
 int main() {
   configure_context(&ctx);
   ANSI_RESET_SCREEN;
+  change_mode(&ctx, MODE_NORMAL);
   render(&ctx);
 
   int ch;
@@ -115,6 +112,8 @@ int main() {
     } else if (ctx.mode == MODE_INSERT) {
       handle_insert_mode(&ctx, ch);
     }
+    check_offset(&ctx);
+    render(&ctx);
   }
 
   tcsetattr(STDIN_FILENO, TCSANOW, &ctx.backup);

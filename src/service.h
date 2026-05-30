@@ -3,9 +3,10 @@
 
 #include "types.h"
 
+void check_offset(struct Context *ctx);
 size_t get_max_x(struct Line *line);
 void change_mode(struct Context *ctx, enum Mode mode);
-void set_cursor_type(enum CursorStyle type);
+void set_cursor_style(enum CursorStyle type);
 void move_cursor_yx(int y, int x);
 
 void configure_context(struct Context *ctx);
