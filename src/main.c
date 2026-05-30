@@ -1,5 +1,3 @@
-#include <stdbool.h>
-#include <stddef.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -100,8 +98,8 @@ void handle_insert_mode(struct Context *ctx, int ch) {
 }
 
 int main() {
-  configure_context(&ctx);
   ANSI_RESET_SCREEN;
+  configure_context(&ctx);
   change_mode(&ctx, MODE_NORMAL);
   render(&ctx);
 

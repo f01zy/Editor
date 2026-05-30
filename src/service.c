@@ -10,6 +10,12 @@
 void configure_context(struct Context *ctx) {
   ioctl(STDIN_FILENO, TIOCGWINSZ, &ctx->win);
   tcgetattr(STDIN_FILENO, &ctx->backup);
+
+  struct UI ui = {
+      .is_line_number = true,
+  };
+
+  ctx->ui            = ui;
   ctx->conf          = ctx->backup;
   ctx->conf.c_iflag |= IXOFF;
   ctx->conf.c_iflag &= ~ICRNL;
@@ -17,17 +23,30 @@ void configure_context(struct Context *ctx) {
   ctx->conf.c_lflag &= ~ISIG;
   ctx->conf.c_lflag &= ~ICANON;
   ctx->mode          = MODE_NORMAL;
+
   add_line(ctx, 0);
   tcsetattr(STDIN_FILENO, TCSANOW, &ctx->conf);
+}
+
+int get_line_number_margin(struct Context *ctx) {
+  if (!ctx->ui.is_line_number) return 0;
+  int len = ctx->len, margin = 0;
+  while (len) {
+    margin++;
+    len /= 10;
+  }
+  return margin + 1;
 }
 
 size_t get_max_x(struct Line *line) { return line->len ? line->len - 1 : 0; }
 
 void check_offset(struct Context *ctx) {
+  int margin = get_line_number_margin(ctx);
+
   if (ctx->x < ctx->offsetX) {
     ctx->offsetX = ctx->x;
-  } else if (ctx->x >= ctx->offsetX + ctx->win.ws_col) {
-    ctx->offsetX = ctx->x - ctx->win.ws_col + 1;
+  } else if (ctx->x >= ctx->offsetX + ctx->win.ws_col - margin) {
+    ctx->offsetX = ctx->x - (ctx->win.ws_col - margin) + 1;
   }
 
   if (ctx->y < ctx->offsetY) {
@@ -54,6 +73,12 @@ void move_cursor_yx(int y, int x) {
 void set_cursor_style(enum CursorStyle type) {
   char buf[MAX_BUFFER_SIZE];
   int len = snprintf(buf, sizeof(buf), ANSI_CURSOR_TYPE, type);
+  write(STDOUT_FILENO, buf, len);
+}
+
+void set_render_mode(enum RenderMode mode) {
+  char buf[MAX_BUFFER_SIZE];
+  int len = snprintf(buf, sizeof(buf), ANSI_RENDER_MODE, mode);
   write(STDOUT_FILENO, buf, len);
 }
 
@@ -137,22 +162,5 @@ void line_break(struct Context *ctx) {
     line->len            = ctx->x;
     line->buf[line->len] = '\0';
     next->buf[next->len] = '\0';
-  }
-}
-
-void configure_frame(struct Context *ctx, char **frame) {
-  for (int i = 0; i < ctx->win.ws_row; i++) {
-    int y = ctx->offsetY + i;
-    if (y >= ctx->len) {
-      for (int j = 0; j < ctx->win.ws_col; j++) {
-        frame[i][j] = ' ';
-      }
-      continue;
-    }
-    struct Line *line = ctx->buf[y];
-    for (int j = 0; j < ctx->win.ws_col; j++) {
-      int x       = ctx->offsetX + j;
-      frame[i][j] = x < line->len ? line->buf[x] : ' ';
-    }
   }
 }
