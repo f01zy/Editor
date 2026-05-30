@@ -40,10 +40,15 @@ struct Line {
   size_t size;
 };
 
+struct Cell {
+  char ch;
+  enum RenderMode mode;
+};
+
 struct Context {
   int x, y;
   int offsetX, offsetY;
-  char **prev_frame;
+  struct Cell **prev_frame;
   struct Line **buf;
   size_t len;
   size_t size;
