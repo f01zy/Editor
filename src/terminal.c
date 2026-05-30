@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "defines.h"
 #include "terminal.h"
 
 void move_cursor_yx(int y, int x) {

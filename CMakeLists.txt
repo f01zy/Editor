@@ -7,6 +7,8 @@ set(SOURCE
   ./src/render.c
   ./src/terminal.c
   ./src/buffer.c
+  ./src/memory.c
+  ./src/filesystem.c
 )
 
 add_executable(editor ${SOURCE})

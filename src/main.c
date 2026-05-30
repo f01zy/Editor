@@ -3,11 +3,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "buffer.h"
-#include "defines.h"
+#include "filesystem.h"
 #include "render.h"
-#include "service.h"
-#include "terminal.h"
 
 struct Context ctx;
 
@@ -108,7 +105,7 @@ void handle_command(struct Context *ctx) {
   if (!strcmp(ctx->cmd->buf, "quit")) {
     ctx->is_exit = true;
   } else if (!strcmp(ctx->cmd->buf, "save")) {
-    save_file(ctx);
+    save_curr_file(ctx);
   }
 }
 
@@ -139,13 +136,18 @@ void handle_command_mode(struct Context *ctx, char ch) {
 }
 
 int main(int argc, char **argv) {
-  if (argc != 2) {
+  if (argc > 2) {
     printf("Invalid input data\n");
     return 1;
   }
 
   ANSI_RESET_SCREEN;
+  ioctl(STDIN_FILENO, TIOCGWINSZ, &ctx.win);
+  tcgetattr(STDIN_FILENO, &ctx.backup);
   configure_context(&ctx, argv[1]);
+  load_curr_file(&ctx);
+  if (!ctx.len) add_line(&ctx, NULL, 0);
+  tcsetattr(STDIN_FILENO, TCSANOW, &ctx.conf);
   change_mode(&ctx, MODE_NORMAL);
   render(&ctx);
 

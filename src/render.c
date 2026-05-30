@@ -1,12 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
-#include "defines.h"
 #include "render.h"
-#include "service.h"
-#include "terminal.h"
 
 void render_line(struct Context *ctx, struct Cell *buf, size_t len, int y) {
   move_cursor_yx(y, 0);

@@ -1,35 +1,10 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-#include "buffer.h"
 #include "service.h"
-#include "terminal.h"
-#include "types.h"
-
-void *xmalloc(size_t size) {
-  void *ptr = malloc(size);
-  if (!ptr) {
-    perror("Fatal: memory allocation failed");
-    exit(1);
-  }
-  return ptr;
-}
-
-void *xrealloc(void *ptr, size_t size) {
-  void *new_ptr = realloc(ptr, size);
-  if (!new_ptr && size > 0) {
-    perror("Fatal: memory reallocation failed");
-    exit(1);
-  }
-  return new_ptr;
-}
 
 void configure_context(struct Context *ctx, char *file_path) {
-  if (!file_path) return;
-  ioctl(STDIN_FILENO, TIOCGWINSZ, &ctx->win);
-  tcgetattr(STDIN_FILENO, &ctx->backup);
   struct UI ui = {
       .is_line_number = true,
   };
@@ -39,10 +14,12 @@ void configure_context(struct Context *ctx, char *file_path) {
   cmd->buf         = (char *)xmalloc(cmd->size);
   cmd->buf[0]      = '\0';
 
-  int path_len   = strlen(file_path);
-  ctx->curr_path = (char *)xmalloc(path_len + 1);
-  memcpy(ctx->curr_path, file_path, path_len);
-  ctx->curr_path[path_len] = '\0';
+  if (file_path) {
+    int path_len   = strlen(file_path);
+    ctx->curr_path = (char *)xmalloc(path_len + 1);
+    memcpy(ctx->curr_path, file_path, path_len);
+    ctx->curr_path[path_len] = '\0';
+  }
 
   ctx->cmd           = cmd;
   ctx->ui            = ui;
@@ -53,9 +30,6 @@ void configure_context(struct Context *ctx, char *file_path) {
   ctx->conf.c_lflag &= ~ISIG;
   ctx->conf.c_lflag &= ~ICANON;
   ctx->mode          = MODE_NORMAL;
-
-  open_file(ctx);
-  tcsetattr(STDIN_FILENO, TCSANOW, &ctx->conf);
 }
 
 void clear_cmd(struct Context *ctx) {

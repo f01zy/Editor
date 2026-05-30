@@ -1,7 +1,7 @@
 #ifndef RENDER_INCLUDED
 #define RENDER_INCLUDED
 
-#include "types.h"
+#include "service.h"
 
 void render_line(struct Context *ctx, struct Cell *buf, size_t len, int y);
 void render_line_number(struct Context *ctx, struct Cell **frame);

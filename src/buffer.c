@@ -4,9 +4,6 @@
 #include <unistd.h>
 
 #include "buffer.h"
-#include "defines.h"
-#include "service.h"
-#include "types.h"
 
 size_t get_max_x(struct Line *line) { return line->len ? line->len - 1 : 0; }
 
@@ -100,36 +97,4 @@ void line_break(struct Context *ctx) {
     line->buf[line->len] = '\0';
     next->buf[next->len] = '\0';
   }
-}
-
-void open_file(struct Context *ctx) {
-  FILE *file = fopen(ctx->curr_path, "r");
-  if (!file) {
-    set_status(ctx, "Failed to open file");
-    return;
-  }
-  char buf[MAX_BUFFER_SIZE];
-  while (fgets(buf, sizeof(buf), file)) {
-    buf[strcspn(buf, "\n")] = '\0';
-    add_line(ctx, buf, ctx->len);
-  }
-  if (!ctx->len) add_line(ctx, NULL, 0);
-  fclose(file);
-}
-
-void save_file(struct Context *ctx) {
-  FILE *file = fopen(ctx->curr_path, "r");
-  if (!file) {
-    set_status(ctx, "Failed to open file");
-    return;
-  }
-  int count = 0;
-  for (int i = 0; i < ctx->len; i++) {
-    struct Line *line  = ctx->buf[i];
-    count             += fwrite(line->buf, line->len, 1, file);
-  }
-  char buf[MAX_BUFFER_SIZE];
-  snprintf(buf, sizeof(buf), "\"%s\", %dB written", ctx->curr_path, count);
-  set_status(ctx, buf);
-  fclose(file);
 }

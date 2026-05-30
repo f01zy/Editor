@@ -1,10 +1,8 @@
 #ifndef SERVICE_INCLUDED
 #define SERVICE_INCLUDED
 
-#include "types.h"
-
-void *xmalloc(size_t size);
-void *xrealloc(void *ptr, size_t size);
+#include "buffer.h"
+#include "terminal.h"
 
 void set_status(struct Context *ctx, char *status);
 void clear_status(struct Context *ctx);

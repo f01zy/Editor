@@ -5,7 +5,3 @@ mkdir build && cd build
 cmake ..
 make
 ```
-
-# TODO
-- [ ] Рефакторинг кода
-- [ ] Починить сохранение файла

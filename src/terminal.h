@@ -1,6 +1,7 @@
 #ifndef TERMINAL_INCLUDED
 #define TERMINAL_INCLUDED
 
+#include "defines.h"
 #include "types.h"
 
 void set_cursor_style(enum CursorStyle type);
