@@ -6,7 +6,7 @@
 #include "defines.h"
 #include "render.h"
 #include "service.h"
-#include "types.h"
+#include "terminal.h"
 
 void render_line(struct Context *ctx, struct Cell *buf, size_t len, int y) {
   move_cursor_yx(y, 0);
@@ -51,7 +51,9 @@ void render_statusline(struct Context *ctx, struct Cell **frame) {
   char buf[MAX_BUFFER_SIZE];
   char *mode_label;
   int len;
-  if (ctx->mode == MODE_COMMAND) {
+  if (ctx->status) {
+    len = snprintf(buf, sizeof(buf), "%s", ctx->status);
+  } else if (ctx->mode == MODE_COMMAND) {
     len = snprintf(buf, sizeof(buf), ":%s", ctx->cmd->buf);
   } else {
     if (ctx->mode == MODE_NORMAL) {
@@ -89,22 +91,22 @@ void render_buf(struct Context *ctx, struct Cell **frame) {
 }
 
 void render(struct Context *ctx) {
-  struct Cell **frame = (struct Cell **)malloc(ctx->win.ws_row * sizeof(struct Cell *));
+  struct Cell **frame = (struct Cell **)xmalloc(ctx->win.ws_row * sizeof(struct Cell *));
   for (int i = 0; i < ctx->win.ws_row; i++) {
-    frame[i] = (struct Cell *)malloc(ctx->win.ws_col * sizeof(struct Cell));
+    frame[i] = (struct Cell *)xmalloc(ctx->win.ws_col * sizeof(struct Cell));
   }
   render_line_number(ctx, frame);
   render_buf(ctx, frame);
   render_statusline(ctx, frame);
   for (int i = 0; i < ctx->win.ws_row; i++) {
     for (int j = 0; j < ctx->win.ws_col; j++) {
-      if (ctx->prev_frame == NULL || frame[i][j].ch != ctx->prev_frame[i][j].ch || frame[i][j].mode != ctx->prev_frame[i][j].mode) {
+      if (!ctx->prev_frame || frame[i][j].ch != ctx->prev_frame[i][j].ch || frame[i][j].mode != ctx->prev_frame[i][j].mode) {
         render_line(ctx, frame[i], ctx->win.ws_col, i);
         break;
       }
     }
   }
-  if (ctx->prev_frame != NULL) {
+  if (ctx->prev_frame) {
     for (int i = 0; i < ctx->win.ws_row; i++) {
       free(ctx->prev_frame[i]);
     }

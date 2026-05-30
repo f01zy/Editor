@@ -5,6 +5,8 @@ set(SOURCE
   ./src/main.c
   ./src/service.c
   ./src/render.c
+  ./src/terminal.c
+  ./src/buffer.c
 )
 
 add_executable(editor ${SOURCE})

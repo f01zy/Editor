@@ -3,10 +3,11 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "buffer.h"
 #include "defines.h"
 #include "render.h"
 #include "service.h"
-#include "types.h"
+#include "terminal.h"
 
 struct Context ctx;
 
@@ -16,8 +17,8 @@ void handle_normal_mode(struct Context *ctx, int ch) {
 
   switch (ch) {
   case 'h':
-    if (ctx->x == 0 && ctx->y == 0) break;
-    if (ctx->x == 0) {
+    if (!ctx->x && !ctx->y) break;
+    if (!ctx->x) {
       ctx->x = get_max_x(ctx->buf[ctx->y - 1]);
       ctx->y--;
     } else {
@@ -42,7 +43,7 @@ void handle_normal_mode(struct Context *ctx, int ch) {
     break;
 
   case 'k':
-    if (ctx->y == 0) break;
+    if (!ctx->y) break;
     ctx->y--;
     ctx->x = MIN(ctx->x, ctx->buf[ctx->y]->len);
     break;
@@ -104,7 +105,11 @@ void handle_insert_mode(struct Context *ctx, int ch) {
 }
 
 void handle_command(struct Context *ctx) {
-  if (strcmp(ctx->cmd->buf, "quit") == 0) { ctx->is_exit = true; }
+  if (!strcmp(ctx->cmd->buf, "quit")) {
+    ctx->is_exit = true;
+  } else if (!strcmp(ctx->cmd->buf, "save")) {
+    save_file(ctx);
+  }
 }
 
 void handle_command_mode(struct Context *ctx, char ch) {
@@ -133,9 +138,14 @@ void handle_command_mode(struct Context *ctx, char ch) {
   }
 }
 
-int main() {
+int main(int argc, char **argv) {
+  if (argc != 2) {
+    printf("Invalid input data\n");
+    return 1;
+  }
+
   ANSI_RESET_SCREEN;
-  configure_context(&ctx);
+  configure_context(&ctx, argv[1]);
   change_mode(&ctx, MODE_NORMAL);
   render(&ctx);
 
@@ -151,9 +161,11 @@ int main() {
     }
     check_offset(&ctx);
     render(&ctx);
+    clear_status(&ctx);
   }
 
   free_resources(&ctx);
+  move_cursor_yx(0, 0);
   ANSI_RESET_SCREEN;
   tcsetattr(STDIN_FILENO, TCSAFLUSH, &ctx.backup);
   return 0;

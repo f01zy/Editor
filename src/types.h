@@ -48,17 +48,19 @@ struct Cell {
 struct Context {
   int x, y;
   int offsetX, offsetY;
+  size_t len;
+  size_t size;
+  bool is_exit;
+  char *curr_path;
+  char *status;
+  enum Mode mode;
   struct Cell **prev_frame;
   struct Line **buf;
   struct Line *cmd;
-  size_t len;
-  size_t size;
   struct termios conf;
   struct termios backup;
   struct winsize win;
   struct UI ui;
-  enum Mode mode;
-  bool is_exit;
 };
 
 #endif

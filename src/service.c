@@ -3,22 +3,47 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "defines.h"
+#include "buffer.h"
 #include "service.h"
+#include "terminal.h"
 #include "types.h"
 
-void configure_context(struct Context *ctx) {
+void *xmalloc(size_t size) {
+  void *ptr = malloc(size);
+  if (!ptr) {
+    perror("Fatal: memory allocation failed");
+    exit(1);
+  }
+  return ptr;
+}
+
+void *xrealloc(void *ptr, size_t size) {
+  void *new_ptr = realloc(ptr, size);
+  if (!new_ptr && size > 0) {
+    perror("Fatal: memory reallocation failed");
+    exit(1);
+  }
+  return new_ptr;
+}
+
+void configure_context(struct Context *ctx, char *file_path) {
+  if (!file_path) return;
   ioctl(STDIN_FILENO, TIOCGWINSZ, &ctx->win);
   tcgetattr(STDIN_FILENO, &ctx->backup);
-
   struct UI ui = {
       .is_line_number = true,
   };
 
-  struct Line *cmd   = (struct Line *)malloc(sizeof(struct Line));
-  cmd->size          = ctx->win.ws_col;
-  cmd->buf           = (char *)malloc(cmd->size);
-  cmd->buf[0]        = '\0';
+  struct Line *cmd = (struct Line *)xmalloc(sizeof(struct Line));
+  cmd->size        = ctx->win.ws_col;
+  cmd->buf         = (char *)xmalloc(cmd->size);
+  cmd->buf[0]      = '\0';
+
+  int path_len   = strlen(file_path);
+  ctx->curr_path = (char *)xmalloc(path_len + 1);
+  memcpy(ctx->curr_path, file_path, path_len);
+  ctx->curr_path[path_len] = '\0';
+
   ctx->cmd           = cmd;
   ctx->ui            = ui;
   ctx->conf          = ctx->backup;
@@ -29,7 +54,7 @@ void configure_context(struct Context *ctx) {
   ctx->conf.c_lflag &= ~ICANON;
   ctx->mode          = MODE_NORMAL;
 
-  add_line(ctx, 0);
+  open_file(ctx);
   tcsetattr(STDIN_FILENO, TCSANOW, &ctx->conf);
 }
 
@@ -48,8 +73,6 @@ int get_line_number_margin(struct Context *ctx) {
   return margin + 1;
 }
 
-size_t get_max_x(struct Line *line) { return line->len ? line->len - 1 : 0; }
-
 void free_resources(struct Context *ctx) {
   for (int i = 0; i < ctx->len; i++) {
     struct Line *line = ctx->buf[i];
@@ -60,6 +83,7 @@ void free_resources(struct Context *ctx) {
     free(ctx->prev_frame[i]);
   }
   free(ctx->buf);
+  free(ctx->curr_path);
   free(ctx->prev_frame);
   free(ctx->cmd->buf);
   free(ctx->cmd);
@@ -89,103 +113,17 @@ void change_mode(struct Context *ctx, enum Mode mode) {
   set_cursor_style(style);
 }
 
-void move_cursor_yx(int y, int x) {
-  char buf[MAX_BUFFER_SIZE];
-  int len = snprintf(buf, sizeof(buf), ANSI_MOVE_CURSOR_YX, y + 1, x + 1);
-  write(STDOUT_FILENO, buf, len);
+void set_status(struct Context *ctx, char *status) {
+  if (!status) return;
+  int len   = strlen(status);
+  char *buf = (char *)xmalloc(len + 1);
+  memcpy(buf, status, len);
+  buf[len] = '\0';
+  free(ctx->status);
+  ctx->status = buf;
 }
 
-void set_cursor_style(enum CursorStyle type) {
-  char buf[MAX_BUFFER_SIZE];
-  int len = snprintf(buf, sizeof(buf), ANSI_CURSOR_TYPE, type);
-  write(STDOUT_FILENO, buf, len);
-}
-
-void set_render_mode(enum RenderMode mode) {
-  char buf[MAX_BUFFER_SIZE];
-  int len = snprintf(buf, sizeof(buf), ANSI_RENDER_MODE, mode);
-  write(STDOUT_FILENO, buf, len);
-}
-
-void add_line(struct Context *ctx, int y) {
-  ctx->len++;
-  if (ctx->len > ctx->size) {
-    ctx->size = ctx->len + ADDITIONAL_REALLOCATION;
-    ctx->buf  = (struct Line **)realloc(ctx->buf, ctx->size * sizeof(struct Line *));
-  }
-  struct Line *line = (struct Line *)malloc(sizeof(struct Line));
-  line->buf         = (char *)malloc(1);
-  line->buf[0]      = '\0';
-  line->size        = 1;
-  line->len         = 0;
-  for (int i = ctx->len - 1; i > y; i--) {
-    ctx->buf[i] = ctx->buf[i - 1];
-  }
-  ctx->buf[y] = line;
-}
-
-void remove_line(struct Context *ctx, int y) {
-  struct Line *line = ctx->buf[y];
-  ctx->len--;
-  free(line->buf);
-  free(line);
-  for (int i = y; i < ctx->len; i++) {
-    ctx->buf[i] = ctx->buf[i + 1];
-  }
-}
-
-void write_to_line(struct Context *ctx, int y, int x, char ch) {
-  struct Line *line = ctx->buf[y];
-  line->len++;
-  if (line->len + 1 > line->size) {
-    line->size = line->len + ADDITIONAL_REALLOCATION;
-    line->buf  = (char *)realloc(line->buf, line->size);
-  }
-  for (int i = line->len - 1; i > x; i--) {
-    line->buf[i] = line->buf[i - 1];
-  }
-  line->buf[x]         = ch;
-  line->buf[line->len] = '\0';
-}
-
-enum RemoveResult remove_from_line(struct Context *ctx, int y, int x) {
-  struct Line *line = ctx->buf[y];
-  if (x == 0 && y == 0) return REMOVE_NOTHING;
-  if (x == 0) {
-    struct Line *prev = ctx->buf[y - 1];
-    if (line->len > 0) {
-      int len = prev->len + line->len;
-      if (prev->size - prev->len - 1 < line->len) {
-        prev->size = len;
-        prev->buf  = (char *)realloc(prev->buf, prev->size);
-      }
-      memcpy(prev->buf + prev->len, line->buf, line->len);
-      prev->len            = len;
-      prev->buf[prev->len] = '\0';
-    }
-    remove_line(ctx, y);
-    return REMOVE_LINE;
-  }
-  line->len--;
-  for (int i = x - 1; i < line->len; i++) {
-    line->buf[i] = line->buf[i + 1];
-  }
-  line->buf[line->len] = '\0';
-  return REMOVE_CHAR;
-}
-
-void line_break(struct Context *ctx) {
-  add_line(ctx, ctx->y + 1);
-  struct Line *line = ctx->buf[ctx->y];
-  struct Line *next = ctx->buf[ctx->y + 1];
-  int diff          = line->len - ctx->x;
-  if (diff > 0) {
-    next->size = diff + 1;
-    next->buf  = (char *)realloc(next->buf, next->size);
-    next->len  = diff;
-    memcpy(next->buf, line->buf + ctx->x, diff);
-    line->len            = ctx->x;
-    line->buf[line->len] = '\0';
-    next->buf[next->len] = '\0';
-  }
+void clear_status(struct Context *ctx) {
+  free(ctx->status);
+  ctx->status = NULL;
 }

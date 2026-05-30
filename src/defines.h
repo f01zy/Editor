@@ -2,7 +2,7 @@
 #define DEFINES_INCLUDED
 
 #define ADDITIONAL_REALLOCATION     16
-#define MAX_BUFFER_SIZE             1024
+#define MAX_BUFFER_SIZE             8192
 #define KEY_ENTER                   13
 #define KEY_BACKSPACE               127
 #define KEY_ESCAPE                  27
