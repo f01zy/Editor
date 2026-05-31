@@ -21,18 +21,18 @@ void render_line(struct Context *ctx, struct Cell *buf, size_t len, int y) {
   }
 }
 
-void render_line_number(struct Context *ctx, struct Cell **frame) {
+void render_line_numbers(struct Context *ctx, struct Document *doc, struct Cell **frame) {
   int margin = get_line_number_margin(ctx);
   char buf[MAX_BUFFER_SIZE];
   for (int i = 0; i < ctx->win.ws_row; i++) {
-    int y = i + ctx->offsetY;
-    if (y >= ctx->len) {
+    int y = i + doc->offsetY;
+    if (y >= doc->len) {
       for (int j = 0; j < margin; j++) {
         frame[i][j] = (struct Cell){' ', RENDER_DEFAULT};
       }
       continue;
     }
-    enum RenderMode mode = ctx->y == y ? RENDER_DEFAULT : RENDER_DIM;
+    enum RenderMode mode = doc->y == y ? RENDER_DEFAULT : RENDER_DIM;
     int len              = snprintf(buf, sizeof(buf), "%d", y + 1);
     for (int j = 0; j < len; j++) {
       frame[i][j] = (struct Cell){buf[j], mode};
@@ -43,21 +43,18 @@ void render_line_number(struct Context *ctx, struct Cell **frame) {
   }
 }
 
-void render_statusline(struct Context *ctx, struct Cell **frame) {
+void render_statusline(struct Context *ctx, struct Document *doc, struct Cell **frame) {
   char buf[MAX_BUFFER_SIZE];
   char *mode_label;
   int len;
   if (ctx->status) {
-    len = snprintf(buf, sizeof(buf), "%s", ctx->status);
+    len = snprintf(buf, sizeof(buf), "%s", ctx->status->msg);
   } else if (ctx->mode == MODE_COMMAND) {
     len = snprintf(buf, sizeof(buf), ":%s", ctx->cmd->buf);
   } else {
-    if (ctx->mode == MODE_NORMAL) {
-      mode_label = "NORMAL";
-    } else if (ctx->mode == MODE_INSERT) {
-      mode_label = "INSERT";
-    }
-    len = snprintf(buf, sizeof(buf), "-- %s -- %d/%d", mode_label, ctx->y + 1, ctx->x + 1);
+    if (ctx->mode == MODE_NORMAL) mode_label = "NORMAL";
+    if (ctx->mode == MODE_INSERT) mode_label = "INSERT";
+    len = snprintf(buf, sizeof(buf), "-- %s -- %d/%d", mode_label, doc->y + 1, doc->x + 1);
   }
   int y = ctx->win.ws_row - 1;
   for (int i = 0; i < len; i++) {
@@ -68,32 +65,33 @@ void render_statusline(struct Context *ctx, struct Cell **frame) {
   }
 }
 
-void render_buf(struct Context *ctx, struct Cell **frame) {
+void render_buf(struct Context *ctx, struct Document *doc, struct Cell **frame) {
   int margin = get_line_number_margin(ctx);
   for (int i = 0; i < ctx->win.ws_row; i++) {
-    int y = ctx->offsetY + i;
-    if (y >= ctx->len) {
+    int y = doc->offsetY + i;
+    if (y >= doc->len) {
       for (int j = margin; j < ctx->win.ws_col; j++) {
         frame[i][j] = (struct Cell){' ', RENDER_DEFAULT};
       }
       continue;
     }
-    struct Line *line = ctx->buf[y];
+    struct Line *line = doc->buf[y];
     for (int j = margin; j < ctx->win.ws_col; j++) {
-      int x       = ctx->offsetX + j - margin;
+      int x       = doc->offsetX + j - margin;
       frame[i][j] = (struct Cell){x < line->len ? line->buf[x] : ' ', RENDER_DEFAULT};
     }
   }
 }
 
 void render(struct Context *ctx) {
-  struct Cell **frame = (struct Cell **)xmalloc(ctx->win.ws_row * sizeof(struct Cell *));
+  struct Document *doc = ctx->docs[ctx->curr_doc];
+  struct Cell **frame  = (struct Cell **)xmalloc(ctx->win.ws_row * sizeof(struct Cell *));
   for (int i = 0; i < ctx->win.ws_row; i++) {
     frame[i] = (struct Cell *)xmalloc(ctx->win.ws_col * sizeof(struct Cell));
   }
-  render_line_number(ctx, frame);
-  render_buf(ctx, frame);
-  render_statusline(ctx, frame);
+  render_line_numbers(ctx, doc, frame);
+  render_buf(ctx, doc, frame);
+  render_statusline(ctx, doc, frame);
   for (int i = 0; i < ctx->win.ws_row; i++) {
     for (int j = 0; j < ctx->win.ws_col; j++) {
       if (!ctx->prev_frame || frame[i][j].ch != ctx->prev_frame[i][j].ch || frame[i][j].mode != ctx->prev_frame[i][j].mode) {
@@ -112,6 +110,6 @@ void render(struct Context *ctx) {
   if (ctx->mode == MODE_COMMAND) {
     move_cursor_yx(ctx->win.ws_row - 1, ctx->cmd->len + 1);
   } else {
-    move_cursor_yx(ctx->y - ctx->offsetY, ctx->x - ctx->offsetX + get_line_number_margin(ctx));
+    move_cursor_yx(doc->y - doc->offsetY, doc->x - doc->offsetX + get_line_number_margin(ctx));
   }
 }

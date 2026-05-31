@@ -1,17 +1,42 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "buffer.h"
 
 size_t get_max_x(struct Line *line) { return line->len ? line->len - 1 : 0; }
 
-void add_line(struct Context *ctx, char *data, int y) {
-  if (y > ctx->len) return;
+struct Document *create_doc(struct Context *ctx) {
+  struct Document *doc = (struct Document *)xmalloc(sizeof(struct Document));
+  doc->offsetX         = 0;
+  doc->offsetY         = 0;
+  doc->x               = 0;
+  doc->y               = 0;
+  doc->len             = 0;
+  doc->size            = 0;
+  doc->path            = NULL;
+  doc->buf             = NULL;
   if (++ctx->len > ctx->size) {
-    ctx->size = ctx->len + ADDITIONAL_REALLOCATION;
-    ctx->buf  = (struct Line **)xrealloc(ctx->buf, ctx->size * sizeof(struct Line *));
+    ctx->size = ctx->len;
+    ctx->docs = (struct Document **)xrealloc(ctx->docs, ctx->size * sizeof(struct Document));
+  }
+  ctx->docs[ctx->len - 1] = doc;
+  return doc;
+}
+
+void set_doc_path(struct Document *doc, char *path) {
+  if (!path) return;
+  free(doc->path);
+  int len   = strlen(path);
+  doc->path = (char *)xmalloc(len + 1);
+  memcpy(doc->path, path, len);
+  doc->path[len] = '\0';
+}
+
+void add_line(struct Document *doc, char *data, int y) {
+  if (y > doc->len) return;
+  if (++doc->len > doc->size) {
+    doc->size = doc->len + ADDITIONAL_REALLOCATION;
+    doc->buf  = (struct Line **)xrealloc(doc->buf, doc->size * sizeof(struct Line *));
   }
   struct Line *line = (struct Line *)xmalloc(sizeof(struct Line));
   if (!data) {
@@ -25,25 +50,25 @@ void add_line(struct Context *ctx, char *data, int y) {
     line->size = len + 1;
     memcpy(line->buf, data, len);
   }
-  for (int i = ctx->len - 1; i > y; i--) {
-    ctx->buf[i] = ctx->buf[i - 1];
+  for (int i = doc->len - 1; i > y; i--) {
+    doc->buf[i] = doc->buf[i - 1];
   }
-  ctx->buf[y] = line;
+  doc->buf[y] = line;
 }
 
-void remove_line(struct Context *ctx, int y) {
-  if (y >= ctx->len) return;
-  struct Line *line = ctx->buf[y];
+void remove_line(struct Document *doc, int y) {
+  if (y >= doc->len) return;
+  struct Line *line = doc->buf[y];
   free(line->buf);
   free(line);
-  for (int i = y; i < --ctx->len; i++) {
-    ctx->buf[i] = ctx->buf[i + 1];
+  for (int i = y; i < --doc->len; i++) {
+    doc->buf[i] = doc->buf[i + 1];
   }
 }
 
-void write_to_line(struct Context *ctx, int y, int x, char ch) {
-  if (y >= ctx->len) return;
-  struct Line *line = ctx->buf[y];
+void write_to_line(struct Document *doc, int y, int x, char ch) {
+  if (y >= doc->len) return;
+  struct Line *line = doc->buf[y];
   if (x > line->len) return;
   if (++line->len + 1 > line->size) {
     line->size = line->len + ADDITIONAL_REALLOCATION;
@@ -56,12 +81,12 @@ void write_to_line(struct Context *ctx, int y, int x, char ch) {
   line->buf[line->len] = '\0';
 }
 
-enum RemoveResult remove_from_line(struct Context *ctx, int y, int x) {
-  if (y >= ctx->len) return REMOVE_NOTHING;
-  struct Line *line = ctx->buf[y];
+enum RemoveResult remove_from_line(struct Document *doc, int y, int x) {
+  if (y >= doc->len) return REMOVE_NOTHING;
+  struct Line *line = doc->buf[y];
   if (x > line->len || (!x && !y)) return REMOVE_NOTHING;
   if (!x) {
-    struct Line *prev = ctx->buf[y - 1];
+    struct Line *prev = doc->buf[y - 1];
     if (line->len > 0) {
       int len = prev->len + line->len;
       if (prev->size - prev->len - 1 < line->len) {
@@ -72,7 +97,7 @@ enum RemoveResult remove_from_line(struct Context *ctx, int y, int x) {
       prev->len            = len;
       prev->buf[prev->len] = '\0';
     }
-    remove_line(ctx, y);
+    remove_line(doc, y);
     return REMOVE_LINE;
   } else {
     for (int i = x - 1; i < --line->len; i++) {
@@ -83,17 +108,17 @@ enum RemoveResult remove_from_line(struct Context *ctx, int y, int x) {
   }
 }
 
-void line_break(struct Context *ctx) {
-  add_line(ctx, NULL, ctx->y + 1);
-  struct Line *line = ctx->buf[ctx->y];
-  struct Line *next = ctx->buf[ctx->y + 1];
-  int diff          = line->len - ctx->x;
+void line_break(struct Document *doc) {
+  add_line(doc, NULL, doc->y + 1);
+  struct Line *line = doc->buf[doc->y];
+  struct Line *next = doc->buf[doc->y + 1];
+  int diff          = line->len - doc->x;
   if (diff > 0) {
     next->size = diff + 1;
     next->buf  = (char *)xrealloc(next->buf, next->size);
     next->len  = diff;
-    memcpy(next->buf, line->buf + ctx->x, diff);
-    line->len            = ctx->x;
+    memcpy(next->buf, line->buf + doc->x, diff);
+    line->len            = doc->x;
     line->buf[line->len] = '\0';
     next->buf[next->len] = '\0';
   }

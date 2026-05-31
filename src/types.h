@@ -29,15 +29,15 @@ enum CursorStyle {
 
 enum Mode { MODE_NORMAL, MODE_INSERT, MODE_COMMAND };
 enum RemoveResult { REMOVE_NOTHING, REMOVE_CHAR, REMOVE_LINE };
+enum StatusType { STATUS_INFO, STATUS_WARNING, STATUS_ERROR };
 
 struct UI {
-  bool is_line_number;
+  bool is_line_numbers;
 };
 
 struct Line {
   char *buf;
-  size_t len;
-  size_t size;
+  size_t len, size;
 };
 
 struct Cell {
@@ -45,22 +45,31 @@ struct Cell {
   enum RenderMode mode;
 };
 
-struct Context {
+struct Status {
+  char *msg;
+  enum StatusType type;
+};
+
+struct Document {
   int x, y;
   int offsetX, offsetY;
-  size_t len;
-  size_t size;
-  bool is_exit;
-  char *curr_path;
-  char *status;
-  enum Mode mode;
-  struct Cell **prev_frame;
+  size_t len, size;
+  char *path;
   struct Line **buf;
+};
+
+struct Context {
+  bool is_exit;
+  size_t len, size, curr_doc;
+  struct Document **docs;
+  struct Cell **prev_frame;
   struct Line *cmd;
+  struct Status *status;
   struct termios conf;
   struct termios backup;
   struct winsize win;
   struct UI ui;
+  enum Mode mode;
 };
 
 #endif

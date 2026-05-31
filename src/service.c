@@ -4,23 +4,28 @@
 
 #include "service.h"
 
-void configure_context(struct Context *ctx, char *file_path) {
-  struct UI ui = {
-      .is_line_number = true,
-  };
+void init_editor(struct Context *ctx) {
+  ANSI_RESET_SCREEN;
+  ioctl(STDIN_FILENO, TIOCGWINSZ, &ctx->win);
+  tcgetattr(STDIN_FILENO, &ctx->backup);
+  configure_context(ctx);
+  tcsetattr(STDIN_FILENO, TCSANOW, &ctx->conf);
+  change_mode(ctx, MODE_NORMAL);
+}
 
-  struct Line *cmd = (struct Line *)xmalloc(sizeof(struct Line));
-  cmd->size        = ctx->win.ws_col;
-  cmd->buf         = (char *)xmalloc(cmd->size);
-  cmd->buf[0]      = '\0';
+void quit_editor(struct Context *ctx) {
+  free_resources(ctx);
+  move_cursor_yx(0, 0);
+  ANSI_RESET_SCREEN;
+  tcsetattr(STDIN_FILENO, TCSAFLUSH, &ctx->backup);
+}
 
-  if (file_path) {
-    int path_len   = strlen(file_path);
-    ctx->curr_path = (char *)xmalloc(path_len + 1);
-    memcpy(ctx->curr_path, file_path, path_len);
-    ctx->curr_path[path_len] = '\0';
-  }
-
+void configure_context(struct Context *ctx) {
+  struct UI ui       = {.is_line_numbers = true};
+  struct Line *cmd   = (struct Line *)xmalloc(sizeof(struct Line));
+  cmd->size          = ctx->win.ws_col;
+  cmd->buf           = (char *)xmalloc(cmd->size);
+  cmd->buf[0]        = '\0';
   ctx->cmd           = cmd;
   ctx->ui            = ui;
   ctx->conf          = ctx->backup;
@@ -29,7 +34,6 @@ void configure_context(struct Context *ctx, char *file_path) {
   ctx->conf.c_lflag &= ~ECHO;
   ctx->conf.c_lflag &= ~ISIG;
   ctx->conf.c_lflag &= ~ICANON;
-  ctx->mode          = MODE_NORMAL;
 }
 
 void clear_cmd(struct Context *ctx) {
@@ -38,8 +42,9 @@ void clear_cmd(struct Context *ctx) {
 }
 
 int get_line_number_margin(struct Context *ctx) {
-  if (!ctx->ui.is_line_number) return 0;
-  int len = ctx->len, margin = 0;
+  if (!ctx->ui.is_line_numbers) return 0;
+  struct Document *doc = ctx->docs[ctx->curr_doc];
+  int len = doc->len, margin = 0;
   while (len) {
     margin++;
     len /= 10;
@@ -48,34 +53,37 @@ int get_line_number_margin(struct Context *ctx) {
 }
 
 void free_resources(struct Context *ctx) {
-  for (int i = 0; i < ctx->len; i++) {
-    struct Line *line = ctx->buf[i];
-    free(line->buf);
-    free(line);
-  }
   for (int i = 0; i < ctx->win.ws_row; i++) {
     free(ctx->prev_frame[i]);
   }
-  free(ctx->buf);
-  free(ctx->curr_path);
+  for (int i = 0; i < ctx->len; i++) {
+    struct Document *doc = ctx->docs[i];
+    for (int j = 0; j < doc->len; j++) {
+      struct Line *line = doc->buf[j];
+      free(line->buf);
+      free(line);
+    }
+    free(doc);
+  }
+  free(ctx->docs);
   free(ctx->prev_frame);
   free(ctx->cmd->buf);
   free(ctx->cmd);
 }
 
-void check_offset(struct Context *ctx) {
+void check_offset(struct Context *ctx, struct Document *doc) {
   int margin = get_line_number_margin(ctx);
 
-  if (ctx->x < ctx->offsetX) {
-    ctx->offsetX = ctx->x;
-  } else if (ctx->x >= ctx->offsetX + ctx->win.ws_col - margin) {
-    ctx->offsetX = ctx->x - (ctx->win.ws_col - margin) + 1;
+  if (doc->x < doc->offsetX) {
+    doc->offsetX = doc->x;
+  } else if (doc->x >= doc->offsetX + ctx->win.ws_col - margin) {
+    doc->offsetX = doc->x - (ctx->win.ws_col - margin) + 1;
   }
 
-  if (ctx->y < ctx->offsetY) {
-    ctx->offsetY = ctx->y;
-  } else if (ctx->y >= ctx->offsetY + ctx->win.ws_row) {
-    ctx->offsetY = ctx->y - ctx->win.ws_row + 1;
+  if (doc->y < doc->offsetY) {
+    doc->offsetY = doc->y;
+  } else if (doc->y >= doc->offsetY + ctx->win.ws_row - 1) {
+    doc->offsetY = doc->y - ctx->win.ws_row + 2;
   }
 }
 
@@ -87,17 +95,25 @@ void change_mode(struct Context *ctx, enum Mode mode) {
   set_cursor_style(style);
 }
 
-void set_status(struct Context *ctx, char *status) {
-  if (!status) return;
-  int len   = strlen(status);
-  char *buf = (char *)xmalloc(len + 1);
-  memcpy(buf, status, len);
-  buf[len] = '\0';
-  free(ctx->status);
-  ctx->status = buf;
+void set_status(struct Context *ctx, char *msg, enum StatusType type) {
+  if (!msg) return;
+  if (ctx->status) {
+    free(ctx->status->msg);
+    free(ctx->status);
+  }
+  struct Status *status = (struct Status *)xmalloc(sizeof(struct Status));
+  status->type          = type;
+  int len               = strlen(msg);
+  char *buf             = (char *)xmalloc(len + 1);
+  memcpy(buf, msg, len);
+  buf[len]    = '\0';
+  status->msg = buf;
+  ctx->status = status;
 }
 
 void clear_status(struct Context *ctx) {
+  if (!ctx->status) return;
+  free(ctx->status->msg);
   free(ctx->status);
   ctx->status = NULL;
 }

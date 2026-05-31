@@ -3,7 +3,7 @@
 
 #include "service.h"
 
-void load_curr_file(struct Context *ctx);
-void save_curr_file(struct Context *ctx);
+bool load_doc_data(struct Document *doc, char *path);
+int save_doc(struct Document *doc);
 
 #endif

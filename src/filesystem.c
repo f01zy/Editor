@@ -3,35 +3,33 @@
 
 #include "filesystem.h"
 
-void load_curr_file(struct Context *ctx) {
-  FILE *file = fopen(ctx->curr_path, "r");
-  if (!file) {
-    set_status(ctx, "Failed to open file");
-    return;
+bool load_doc_data(struct Document *doc, char *path) {
+  FILE *file = fopen(path, "r");
+  if (!file) return false;
+  set_doc_path(doc, path);
+  for (int i = doc->len - 1; i >= 0; i--) {
+    remove_line(doc, i);
   }
   char buf[MAX_BUFFER_SIZE];
   while (fgets(buf, sizeof(buf), file)) {
     buf[strcspn(buf, "\n")] = '\0';
-    add_line(ctx, buf, ctx->len);
+    add_line(doc, buf, doc->len);
   }
   fclose(file);
+  return true;
 }
 
-void save_curr_file(struct Context *ctx) {
+int save_doc(struct Document *doc) {
   char buf[MAX_BUFFER_SIZE];
-  FILE *file = fopen(ctx->curr_path, "w");
-  if (!file) {
-    set_status(ctx, "Failed to open file");
-    return;
-  }
+  FILE *file = fopen(doc->path, "w");
+  if (!file) return -1;
   int size = 0;
-  for (int i = 0; i < ctx->len; i++) {
-    struct Line *line = ctx->buf[i];
+  for (int i = 0; i < doc->len; i++) {
+    struct Line *line = doc->buf[i];
     int len           = snprintf(buf, sizeof(buf), "%s\n", line->buf);
     fwrite(buf, len, 1, file);
     size += len;
   }
-  snprintf(buf, sizeof(buf), "\"%s\", %dB written", ctx->curr_path, size);
-  set_status(ctx, buf);
   fclose(file);
+  return size;
 }

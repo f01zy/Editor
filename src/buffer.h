@@ -7,10 +7,12 @@
 
 size_t get_max_x(struct Line *line);
 
-enum RemoveResult remove_from_line(struct Context *ctx, int y, int x);
-void add_line(struct Context *ctx, char *data, int y);
-void remove_line(struct Context *ctx, int y);
-void write_to_line(struct Context *ctx, int y, int x, char ch);
-void line_break(struct Context *ctx);
+struct Document *create_doc(struct Context *ctx);
+void set_doc_path(struct Document *doc, char *path);
+void add_line(struct Document *doc, char *data, int y);
+void remove_line(struct Document *doc, int y);
+void write_to_line(struct Document *doc, int y, int x, char ch);
+void line_break(struct Document *doc);
+enum RemoveResult remove_from_line(struct Document *doc, int y, int x);
 
 #endif
