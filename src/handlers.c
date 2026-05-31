@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "handlers.h"
+#include "types.h"
 
 void handle_normal_mode(struct Context *ctx, struct Document *doc, int ch) {
   struct Line *line = doc->buf[doc->y];
@@ -99,13 +100,22 @@ void handle_insert_mode(struct Context *ctx, struct Document *doc, int ch) {
 
 void handle_command(struct Context *ctx, struct Document *doc) {
   if (!ctx->cmd && !ctx->cmd->len) return;
-
   char *cmd = (char *)xmalloc(ctx->cmd->len + 1);
   memcpy(cmd, ctx->cmd->buf, ctx->cmd->len);
   cmd[ctx->cmd->len] = '\0';
   char *token        = strtok(cmd, " ");
 
-  if (!strcmp(token, "save")) {
+  enum Command type = COMMAND_UNKNOWN;
+  if (!strcmp(token, "save")) type = COMMAND_SAVE;
+  if (!strcmp(token, "open")) type = COMMAND_OPEN;
+  if (!strcmp(token, "quit")) type = COMMAND_QUIT;
+
+  switch (type) {
+  case COMMAND_QUIT:
+    ctx->is_exit = true;
+    break;
+
+  case COMMAND_SAVE: {
     int size = save_doc(doc);
     if (size == -1) {
       set_status(ctx, "Failed to save file", STATUS_ERROR);
@@ -115,9 +125,10 @@ void handle_command(struct Context *ctx, struct Document *doc) {
     char buf[MAX_BUFFER_SIZE];
     snprintf(buf, sizeof(buf), "\"%s\", %dB written", doc->path, size);
     set_status(ctx, buf, STATUS_INFO);
+    break;
   }
 
-  else if (!strcmp(token, "open")) {
+  case COMMAND_OPEN:
     token          = strtok(NULL, " ");
     bool is_opened = load_doc_data(doc, token);
     if (!is_opened) {
@@ -125,17 +136,16 @@ void handle_command(struct Context *ctx, struct Document *doc) {
       free(cmd);
       return;
     }
-  }
+    break;
 
-  else if (!strcmp(token, "quit")) {
-    ctx->is_exit = true;
-  }
-
-  else {
+  default: {
     char buf[MAX_BUFFER_SIZE];
     int len = snprintf(buf, sizeof(buf), "Not an editor command: %s", cmd);
     set_status(ctx, buf, STATUS_ERROR);
+    break;
   }
+  }
+
   free(cmd);
 }
 

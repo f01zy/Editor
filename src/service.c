@@ -23,18 +23,18 @@ void quit_editor(struct Context *ctx) {
 void configure_context(struct Context *ctx) {
   struct UI ui = {
       .is_line_numbers = true,
-      .is_statusline   = true,
-      .is_tabmenu      = true,
+      .is_statusline = true,
+      .is_tabmenu = true,
   };
-  struct Line *cmd   = (struct Line *)xmalloc(sizeof(struct Line));
-  cmd->size          = ctx->win.ws_col;
-  cmd->buf           = (char *)xmalloc(cmd->size);
-  cmd->buf[0]        = '\0';
-  ctx->cmd           = cmd;
-  ctx->curr_frame    = create_frame(ctx);
-  ctx->prev_frame    = create_frame(ctx);
-  ctx->ui            = ui;
-  ctx->conf          = ctx->backup;
+  struct Line *cmd = (struct Line *)xmalloc(sizeof(struct Line));
+  cmd->size = ctx->win.ws_col;
+  cmd->buf = (char *)xmalloc(cmd->size);
+  cmd->buf[0] = '\0';
+  ctx->cmd = cmd;
+  ctx->curr_frame = create_frame(ctx);
+  ctx->prev_frame = create_frame(ctx);
+  ctx->ui = ui;
+  ctx->conf = ctx->backup;
   ctx->conf.c_iflag |= IXOFF;
   ctx->conf.c_iflag &= ~ICRNL;
   ctx->conf.c_lflag &= ~ECHO;
@@ -44,7 +44,7 @@ void configure_context(struct Context *ctx) {
 
 void clear_cmd(struct Context *ctx) {
   ctx->cmd->buf[0] = '\0';
-  ctx->cmd->len    = 0;
+  ctx->cmd->len = 0;
 }
 
 void free_resources(struct Context *ctx) {
@@ -67,7 +67,7 @@ void free_resources(struct Context *ctx) {
 }
 
 void check_offset(struct Context *ctx, struct Document *doc) {
-  int width  = get_buffer_width(ctx);
+  int width = get_buffer_width(ctx);
   int height = get_buffer_height(ctx);
 
   if (doc->x < doc->offsetX) {
@@ -85,7 +85,7 @@ void check_offset(struct Context *ctx, struct Document *doc) {
 
 void change_mode(struct Context *ctx, enum Mode mode) {
   enum CursorStyle style;
-  if (mode == MODE_NORMAL) style = CURSOR_BLOCK_STATIC;
+  if (mode == MODE_NORMAL) style = CURSOR_BLOCK_BLINKING;
   if (mode == MODE_INSERT) style = CURSOR_LINE_STATIC;
   ctx->mode = mode;
   set_cursor_style(style);
@@ -98,11 +98,11 @@ void set_status(struct Context *ctx, char *msg, enum StatusType type) {
     free(ctx->status);
   }
   struct Status *status = (struct Status *)xmalloc(sizeof(struct Status));
-  status->type          = type;
-  int len               = strlen(msg);
-  char *buf             = (char *)xmalloc(len + 1);
+  status->type = type;
+  int len = strlen(msg);
+  char *buf = (char *)xmalloc(len + 1);
   memcpy(buf, msg, len);
-  buf[len]    = '\0';
+  buf[len] = '\0';
   status->msg = buf;
   ctx->status = status;
 }
