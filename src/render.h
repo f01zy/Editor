@@ -4,6 +4,7 @@
 #include "service.h"
 
 void render_line(struct Context *ctx, struct Cell *buf, size_t len, int y);
+void render_tabmenu(struct Context *ctx, struct Cell **frame);
 void render_line_numbers(struct Context *ctx, struct Document *doc, struct Cell **frame);
 void render_statusline(struct Context *ctx, struct Document *doc, struct Cell **frame);
 void render_buf(struct Context *ctx, struct Document *doc, struct Cell **frame);

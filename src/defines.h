@@ -13,7 +13,7 @@
 #define ANSI_MOVE_CURSOR_YX         "\x1b[%d;%dH"
 #define ANSI_CURSOR_TYPE            "\x1b[%d q"
 #define ANSI_RENDER_MODE            "\x1b[%dm"
-#define MIN(A, B)                   ((A) > (B) ? (B) : (A))
-#define MAX(A, B)                   ((A) < (B) ? (B) : (A))
+#define MIN(A, B)                   ((A) < (B) ? (A) : (B))
+#define MAX(A, B)                   ((A) > (B) ? (A) : (B))
 
 #endif

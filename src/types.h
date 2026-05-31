@@ -33,6 +33,8 @@ enum StatusType { STATUS_INFO, STATUS_WARNING, STATUS_ERROR };
 
 struct UI {
   bool is_line_numbers;
+  bool is_statusline;
+  bool is_tabmenu;
 };
 
 struct Line {
@@ -63,6 +65,7 @@ struct Context {
   size_t len, size, curr_doc;
   struct Document **docs;
   struct Cell **prev_frame;
+  struct Cell **curr_frame;
   struct Line *cmd;
   struct Status *status;
   struct termios conf;

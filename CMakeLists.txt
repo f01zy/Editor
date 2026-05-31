@@ -9,6 +9,8 @@ set(SOURCE
   ./src/buffer.c
   ./src/memory.c
   ./src/filesystem.c
+  ./src/ui.c
+  ./src/handlers.c
 )
 
 add_executable(editor ${SOURCE})

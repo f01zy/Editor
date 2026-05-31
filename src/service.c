@@ -21,12 +21,18 @@ void quit_editor(struct Context *ctx) {
 }
 
 void configure_context(struct Context *ctx) {
-  struct UI ui       = {.is_line_numbers = true};
+  struct UI ui = {
+      .is_line_numbers = true,
+      .is_statusline   = true,
+      .is_tabmenu      = true,
+  };
   struct Line *cmd   = (struct Line *)xmalloc(sizeof(struct Line));
   cmd->size          = ctx->win.ws_col;
   cmd->buf           = (char *)xmalloc(cmd->size);
   cmd->buf[0]        = '\0';
   ctx->cmd           = cmd;
+  ctx->curr_frame    = create_frame(ctx);
+  ctx->prev_frame    = create_frame(ctx);
   ctx->ui            = ui;
   ctx->conf          = ctx->backup;
   ctx->conf.c_iflag |= IXOFF;
@@ -39,17 +45,6 @@ void configure_context(struct Context *ctx) {
 void clear_cmd(struct Context *ctx) {
   ctx->cmd->buf[0] = '\0';
   ctx->cmd->len    = 0;
-}
-
-int get_line_number_margin(struct Context *ctx) {
-  if (!ctx->ui.is_line_numbers) return 0;
-  struct Document *doc = ctx->docs[ctx->curr_doc];
-  int len = doc->len, margin = 0;
-  while (len) {
-    margin++;
-    len /= 10;
-  }
-  return margin + 1;
 }
 
 void free_resources(struct Context *ctx) {
@@ -72,18 +67,19 @@ void free_resources(struct Context *ctx) {
 }
 
 void check_offset(struct Context *ctx, struct Document *doc) {
-  int margin = get_line_number_margin(ctx);
+  int width  = get_buffer_width(ctx);
+  int height = get_buffer_height(ctx);
 
   if (doc->x < doc->offsetX) {
     doc->offsetX = doc->x;
-  } else if (doc->x >= doc->offsetX + ctx->win.ws_col - margin) {
-    doc->offsetX = doc->x - (ctx->win.ws_col - margin) + 1;
+  } else if (doc->x >= doc->offsetX + width) {
+    doc->offsetX = doc->x - width + 1;
   }
 
   if (doc->y < doc->offsetY) {
     doc->offsetY = doc->y;
-  } else if (doc->y >= doc->offsetY + ctx->win.ws_row - 1) {
-    doc->offsetY = doc->y - ctx->win.ws_row + 2;
+  } else if (doc->y >= doc->offsetY + height) {
+    doc->offsetY = doc->y - height + 1;
   }
 }
 
@@ -116,4 +112,19 @@ void clear_status(struct Context *ctx) {
   free(ctx->status->msg);
   free(ctx->status);
   ctx->status = NULL;
+}
+
+struct Cell **create_frame(struct Context *ctx) {
+  struct Cell **frame = (struct Cell **)xmalloc(ctx->win.ws_row * sizeof(struct Cell *));
+  for (int i = 0; i < ctx->win.ws_row; i++) {
+    frame[i] = (struct Cell *)xcalloc(ctx->win.ws_col, sizeof(struct Cell));
+  }
+  return frame;
+}
+
+const char *get_file_name(char *path) {
+  if (!path || path[0] == '\0') return "New buffer";
+  char *slash = strrchr(path, '/');
+  if (!slash) return path;
+  return slash + 1;
 }
