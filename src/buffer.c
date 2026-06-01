@@ -1,5 +1,7 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "buffer.h"
 
@@ -20,10 +22,18 @@ struct Document *create_doc(struct Context *ctx) {
 void set_doc_path(struct Document *doc, char *path) {
   if (!path) return;
   free(doc->path);
-  int len = strlen(path);
+  char cwd[MAX_BUFFER_SIZE];
+  if (!getcwd(cwd, sizeof(cwd))) return;
+  char buf[MAX_BUFFER_SIZE];
+  int len = snprintf(buf, sizeof(buf), "%s/%s", cwd, path);
   doc->path = (char *)xmalloc(len + 1);
-  memcpy(doc->path, path, len);
+  memcpy(doc->path, buf, len);
   doc->path[len] = '\0';
+}
+
+void remove_doc_path(struct Document *doc) {
+  free(doc->path);
+  doc->path = NULL;
 }
 
 void add_line(struct Document *doc, char *data, int y) {

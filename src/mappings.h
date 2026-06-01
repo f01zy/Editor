@@ -14,6 +14,7 @@ void cmd_doc_end(struct Context *ctx);
 void cmd_doc_prev(struct Context *ctx);
 void cmd_doc_next(struct Context *ctx);
 void cmd_doc_new(struct Context *ctx);
+void _cmd_doc_close(struct Context *ctx);
 void cmd_doc_close(struct Context *ctx);
 void cmd_command_mode(struct Context *ctx);
 void cmd_insert_mode_prev(struct Context *ctx);

@@ -2,7 +2,6 @@
 #include <string.h>
 
 #include "editor_commands.h"
-#include "service.h"
 
 struct Command commands_list[] = {
     {"open", command_open},
@@ -23,11 +22,10 @@ void command_quit(struct Context *ctx, char *token) {
 void command_save(struct Context *ctx, char *token) {
   struct Document *doc = ctx->docs[ctx->curr_doc];
   token = strtok(NULL, " ");
-  if (token) {
-    // TODO: создать новый файл
-  }
+  if (!doc->path && token) set_doc_path(doc, token);
   int size = save_doc(doc);
   if (size == -1) {
+    remove_doc_path(doc);
     set_statusline_message(ctx, "Failed to save file", MESSAGE_ERROR);
     return;
   }
@@ -40,7 +38,14 @@ void command_open(struct Context *ctx, char *token) {
   struct Document *doc = ctx->docs[ctx->curr_doc];
   token = strtok(NULL, " ");
   bool is_opened = load_doc_data(doc, token);
-  if (!is_opened) set_statusline_message(ctx, "Failed to open file", MESSAGE_ERROR);
+  if (!is_opened) {
+    set_statusline_message(ctx, "Failed to open file", MESSAGE_ERROR);
+  } else {
+    doc->x = 0;
+    doc->y = 0;
+    doc->offsetX = 0;
+    doc->offsetY = 0;
+  }
 }
 
 void command_unknown(struct Context *ctx, char *token) {

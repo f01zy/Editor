@@ -46,6 +46,14 @@ void clear_cmd(struct Context *ctx) {
   ctx->status.cmd.len = 0;
 }
 
+void free_mappings(struct Context *ctx, struct MappingNode *node) {
+  for (int i = 0; i < node->len; i++) {
+    free_mappings(ctx, node->nodes[i]);
+  }
+  free(node->nodes);
+  free(node);
+}
+
 void free_resources(struct Context *ctx) {
   for (int i = 0; i < ctx->win.ws_row; i++) {
     free(ctx->prev_frame[i]);
@@ -63,6 +71,7 @@ void free_resources(struct Context *ctx) {
   free(ctx->docs);
   free(ctx->prev_frame);
   free(ctx->curr_frame);
+  free_mappings(ctx, ctx->head_mapping);
 }
 
 void check_offset(struct Context *ctx, struct Document *doc) {

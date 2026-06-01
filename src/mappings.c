@@ -97,6 +97,14 @@ void cmd_doc_new(struct Context *ctx) {
 }
 
 void cmd_doc_close(struct Context *ctx) {
+  if (ctx->docs[ctx->curr_doc]->is_changed) {
+    set_statusline_dialog(ctx, "You have unsaved changed. Are you sure (Y/N): ", _cmd_doc_close, NULL);
+    return;
+  }
+  _cmd_doc_close(ctx);
+}
+
+void _cmd_doc_close(struct Context *ctx) {
   if (ctx->len == 1) return;
   ctx->len--;
   for (int i = ctx->curr_doc; i < ctx->len; i++) {

@@ -8,6 +8,7 @@ size_t get_max_x(struct Line *line);
 
 struct Document *create_doc(struct Context *ctx);
 void set_doc_path(struct Document *doc, char *path);
+void remove_doc_path(struct Document *doc);
 void add_line(struct Document *doc, char *data, int y);
 void remove_line(struct Document *doc, int y);
 void write_to_line(struct Document *doc, int y, int x, char ch);

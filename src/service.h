@@ -16,12 +16,13 @@ void init_editor(struct Context *ctx);
 void set_flag_to_quit(struct Context *ctx);
 void quit_editor(struct Context *ctx);
 
-struct Cell **create_frame(struct Context *ctx);
-void exec_curr_mapping(struct Context *ctx);
+void free_mappings(struct Context *ctx, struct MappingNode *node);
 void free_resources(struct Context *ctx);
+void exec_curr_mapping(struct Context *ctx);
 void clear_cmd(struct Context *ctx);
 void check_offset(struct Context *ctx, struct Document *doc);
-const char *get_file_name(char *path);
 int getchar_nonblock(int ms);
+const char *get_file_name(char *path);
+struct Cell **create_frame(struct Context *ctx);
 
 #endif
