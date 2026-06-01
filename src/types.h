@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <sys/ioctl.h>
+#include <sys/time.h>
 #include <termios.h>
 
 enum CursorStyle {
@@ -89,7 +90,7 @@ struct Document {
 struct Context {
   bool is_exit;
   size_t len, size, curr_doc;
-  double prev_frame_time;
+  struct timeval prev_frame_time;
   struct MappingNode *map_head;
   struct MappingNode *map_curr;
   struct Document **docs;

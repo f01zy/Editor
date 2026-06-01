@@ -1,31 +1,14 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
 #include "handlers.h"
 
 void handle_normal_mode(struct Context *ctx, int ch) {
-  struct Document *doc = ctx->docs[ctx->curr_doc];
-  struct Line *line = doc->buf[doc->y];
-  size_t len = get_max_x(line);
-  double now = clock();
-  double delta = (now - ctx->prev_frame_time) / (CLOCKS_PER_SEC / 1000);
-  ctx->prev_frame_time = now;
-  if (delta > 100) {
-    if (ctx->map_curr->act) ctx->map_curr->act(ctx);
-    ctx->map_curr = ctx->map_head;
-    return;
-  }
   for (int i = 0; i < ctx->map_curr->len; i++) {
-    struct MappingNode *curr_node = ctx->map_curr->nodes[i];
-    if (curr_node->ch == ch) {
-      ctx->map_curr = curr_node;
+    struct MappingNode *node = ctx->map_curr->nodes[i];
+    if (node->ch == ch) {
+      ctx->map_curr = node;
       break;
     }
   }
-  if (!ctx->map_curr->len) ctx->map_curr->act(ctx);
-  ctx->map_curr = ctx->map_head;
+  if (!ctx->map_curr->len) exec_curr_map(ctx);
 }
 
 void handle_insert_mode(struct Context *ctx, int ch) {

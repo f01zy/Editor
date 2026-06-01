@@ -1,3 +1,5 @@
+#include <poll.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -21,6 +23,7 @@ void quit_editor(struct Context *ctx) {
 }
 
 void init_context(struct Context *ctx) {
+  gettimeofday(&ctx->prev_frame_time, NULL);
   struct UI ui = {
       .is_line_numbers = true,
       .is_statusline = true,
@@ -122,9 +125,23 @@ struct Cell **create_frame(struct Context *ctx) {
   return frame;
 }
 
-const char *get_file_name(char *path) {
+char *get_file_name(char *path) {
   if (!path || path[0] == '\0') return "New buffer";
   char *slash = strrchr(path, '/');
   if (!slash) return path;
   return slash + 1;
+}
+
+int getchar_nonblock(int ms) {
+  struct pollfd pfd;
+  pfd.fd = STDIN_FILENO;
+  pfd.events = POLLIN;
+  int ret = poll(&pfd, 1, ms);
+  if (ret > 0 && (pfd.events & POLLIN)) return getchar();
+  return -1;
+}
+
+void exec_curr_map(struct Context *ctx) {
+  if (ctx->map_curr->act) ctx->map_curr->act(ctx);
+  ctx->map_curr = ctx->map_head;
 }

@@ -13,10 +13,12 @@ void init_editor(struct Context *ctx);
 void quit_editor(struct Context *ctx);
 
 struct Cell **create_frame(struct Context *ctx);
+void exec_curr_map(struct Context *ctx);
 void free_resources(struct Context *ctx);
 void clear_cmd(struct Context *ctx);
 void check_offset(struct Context *ctx, struct Document *doc);
 void change_mode(struct Context *ctx, enum Mode mode);
-const char *get_file_name(char *path);
+char *get_file_name(char *path);
+int getchar_nonblock(int ms);
 
 #endif

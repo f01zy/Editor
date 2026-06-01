@@ -30,7 +30,6 @@ void render_line(struct Context *ctx, struct Cell *buf, size_t len, int y) {
   }
 }
 
-// TODO: добавить отступы
 void render_tabmenu(struct Context *ctx, struct Cell **frame) {
   int max_len = 0;
   for (int i = 0; i < ctx->len; i++) {
@@ -76,27 +75,22 @@ void render_line_numbers(struct Context *ctx, struct Document *doc, struct Cell 
 
 void render_statusline(struct Context *ctx, struct Document *doc, struct Cell **frame) {
   char buf[MAX_BUFFER_SIZE];
-  int len;
+  int len, y = ctx->win.ws_row - 1;
   enum ForegroundColor fg = FOREGROUND_DEFAULT;
+
   if (ctx->status) {
-    if (ctx->status->type == STATUS_ERROR) {
-      fg = FOREGROUND_RED;
-    } else if (ctx->status->type == STATUS_WARNING) {
-      fg = FOREGROUND_YELLOW;
-    }
+    if (ctx->status->type == STATUS_ERROR) fg = FOREGROUND_RED;
+    if (ctx->status->type == STATUS_WARNING) fg = FOREGROUND_YELLOW;
     len = snprintf(buf, sizeof(buf), "%s", ctx->status->msg);
   } else if (ctx->mode == MODE_COMMAND) {
     len = snprintf(buf, sizeof(buf), ":%s", ctx->cmd->buf);
   } else {
-    char *mode_label = ctx->mode == MODE_INSERT ? "INSERT" : "NORMAL";
-    len = snprintf(buf, sizeof(buf), "-- %s -- %d/%d", mode_label, doc->y + 1, doc->x + 1);
+    char *mode = (ctx->mode == MODE_INSERT) ? "INSERT" : "NORMAL";
+    len = snprintf(buf, sizeof(buf), "-- %s -- %d/%d", mode, doc->y + 1, doc->x + 1);
   }
-  int y = ctx->win.ws_row - 1;
-  for (int i = 0; i < len; i++) {
-    frame[y][i] = (struct Cell){buf[i], RENDER_DEFAULT, fg, BACKGROUND_DEFAULT};
-  }
-  for (int i = len; i < ctx->win.ws_col; i++) {
-    frame[y][i] = CELL(' ');
+
+  for (int i = 0; i < ctx->win.ws_col; i++) {
+    frame[y][i] = (i < len) ? (struct Cell){buf[i], RENDER_DEFAULT, fg, BACKGROUND_DEFAULT} : CELL(' ');
   }
 }
 

@@ -23,19 +23,26 @@ int main(int argc, char **argv) {
 
   int ch;
   while (!ctx.is_exit) {
-    ch = getchar();
-    if (ctx.mode == MODE_INSERT) {
-      handle_insert_mode(&ctx, ch);
-    } else if (ctx.mode == MODE_COMMAND) {
-      handle_command_mode(&ctx, ch);
-    } else if (ctx.mode == MODE_NORMAL) {
-      handle_normal_mode(&ctx, ch);
-    }
-
     struct Document *doc = ctx.docs[ctx.curr_doc];
-    check_offset(&ctx, doc);
-    render(&ctx);
-    clear_status(&ctx);
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    __suseconds_t delta = (now.tv_sec - ctx.prev_frame_time.tv_sec) * 1000000LL + (now.tv_usec - ctx.prev_frame_time.tv_usec);
+    ch = getchar_nonblock(20);
+
+    if (delta > 200000) exec_curr_map(&ctx);
+    if (ch != -1) {
+      ctx.prev_frame_time = now;
+      if (ctx.mode == MODE_INSERT) {
+        handle_insert_mode(&ctx, ch);
+      } else if (ctx.mode == MODE_COMMAND) {
+        handle_command_mode(&ctx, ch);
+      } else if (ctx.mode == MODE_NORMAL) {
+        handle_normal_mode(&ctx, ch);
+      }
+      check_offset(&ctx, doc);
+      clear_status(&ctx);
+      render(&ctx);
+    }
   }
 
   quit_editor(&ctx);
