@@ -31,6 +31,9 @@ void render_line(struct Context *ctx, struct Cell *buf, size_t len, int y) {
 }
 
 void render_tabmenu(struct Context *ctx, struct Cell **frame) {
+  for (int i = 0; i < ctx->win.ws_col; i++) {
+    frame[0][i] = CELL(' ');
+  }
   int max_len = 0;
   for (int i = 0; i < ctx->len; i++) {
     const char *filename = get_file_name(ctx->docs[i]->path);
@@ -39,12 +42,13 @@ void render_tabmenu(struct Context *ctx, struct Cell **frame) {
   int max_docs_count = MAX(ctx->win.ws_col / max_len, 1);
   int offset = MAX((int)ctx->curr_doc - max_docs_count + 1, 0);
   for (int i = offset; i < offset + max_docs_count && i < ctx->len; i++) {
+    enum RenderMode mode = i == ctx->curr_doc ? RENDER_DEFAULT : RENDER_DIM;
     const char *filename = get_file_name(ctx->docs[i]->path);
     int len = strlen(filename);
+    int margin = (max_len - len) / 2;
     int tab_start_x = (i - offset) * max_len;
     for (int j = 0; j < len; j++) {
-      enum RenderMode mode = i == ctx->curr_doc ? RENDER_DEFAULT : RENDER_DIM;
-      frame[0][tab_start_x + j] = CELL_MODE(filename[j], mode);
+      frame[0][tab_start_x + j + margin] = CELL_MODE(filename[j], mode);
     }
   }
 }
@@ -90,7 +94,7 @@ void render_statusline(struct Context *ctx, struct Document *doc, struct Cell **
   }
 
   for (int i = 0; i < ctx->win.ws_col; i++) {
-    frame[y][i] = (i < len) ? (struct Cell){buf[i], RENDER_DEFAULT, fg, BACKGROUND_DEFAULT} : CELL(' ');
+    frame[y][i] = i < len ? (struct Cell){buf[i], RENDER_DEFAULT, fg, BACKGROUND_DEFAULT} : CELL(' ');
   }
 }
 

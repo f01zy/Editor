@@ -3,19 +3,23 @@
 
 #include "service.h"
 
-void map_up(struct Context *ctx);
-void map_down(struct Context *ctx);
-void map_left(struct Context *ctx);
-void map_right(struct Context *ctx);
-void map_command_mode(struct Context *ctx);
-void map_insert_mode_prev(struct Context *ctx);
-void map_insert_mode_next(struct Context *ctx);
-void map_line_start(struct Context *ctx);
-void map_line_end(struct Context *ctx);
-void map_doc_start(struct Context *ctx);
-void map_doc_end(struct Context *ctx);
+void cmd_up(struct Context *ctx);
+void cmd_down(struct Context *ctx);
+void cmd_left(struct Context *ctx);
+void cmd_right(struct Context *ctx);
+void cmd_line_start(struct Context *ctx);
+void cmd_line_end(struct Context *ctx);
+void cmd_doc_start(struct Context *ctx);
+void cmd_doc_end(struct Context *ctx);
+void cmd_doc_prev(struct Context *ctx);
+void cmd_doc_next(struct Context *ctx);
+void cmd_doc_new(struct Context *ctx);
+void cmd_doc_close(struct Context *ctx);
+void cmd_command_mode(struct Context *ctx);
+void cmd_insert_mode_prev(struct Context *ctx);
+void cmd_insert_mode_next(struct Context *ctx);
 
-void add_map_node(struct Context *ctx, struct MappingNode *head, struct Mapping map);
-void init_maps(struct Context *ctx);
+void add_mapping_node(struct Context *ctx, struct MappingNode *head, struct Mapping map);
+void init_mappings(struct Context *ctx);
 
 #endif

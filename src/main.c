@@ -11,14 +11,9 @@ int main(int argc, char **argv) {
     return 1;
   }
   init_editor(&ctx);
-  init_maps(&ctx);
-  if (argc == 2) {
-    struct Document *doc = create_doc(&ctx);
-    load_doc_data(doc, argv[1]);
-  } else {
-    struct Document *doc = create_doc(&ctx);
-    add_line(doc, NULL, 0);
-  }
+  init_mappings(&ctx);
+  struct Document *doc = create_doc(&ctx);
+  if (argc == 2) load_doc_data(doc, argv[1]);
   render(&ctx);
 
   int ch;
@@ -40,8 +35,8 @@ int main(int argc, char **argv) {
         handle_normal_mode(&ctx, ch);
       }
       check_offset(&ctx, doc);
-      clear_status(&ctx);
       render(&ctx);
+      clear_status(&ctx);
     }
   }
 

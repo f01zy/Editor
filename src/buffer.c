@@ -12,6 +12,7 @@ struct Document *create_doc(struct Context *ctx) {
     ctx->size = ctx->len;
     ctx->docs = (struct Document **)xrealloc(ctx->docs, ctx->size * sizeof(struct Document));
   }
+  add_line(doc, NULL, 0);
   ctx->docs[ctx->len - 1] = doc;
   return doc;
 }

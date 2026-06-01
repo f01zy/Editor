@@ -7,6 +7,7 @@
 #define KEY_BACKSPACE               127
 #define KEY_ESCAPE                  27
 #define KEY_TAB                     9
+#define KEY_SHIFT_TAB               "\x1b[Z"
 #define ANSI_RESET_SCREEN           write(STDOUT_FILENO, "\x1b[2J", 4)
 #define ANSI_RESET_LINE_FROM_CURSOR write(STDOUT_FILENO, "\x1b[0K", 4)
 #define ANSI_RESET_LINE_TO_CURSOR   write(STDOUT_FILENO, "\x1b[0K", 4)

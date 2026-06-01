@@ -1,26 +1,41 @@
 #include "mappings.h"
+#include <stdlib.h>
 #include <string.h>
 
-struct Mapping maps_list[] = {
-    {"h", map_left},         {"l", map_right},      {"j", map_down},     {"k", map_up},         {"i", map_insert_mode_prev}, {"a", map_insert_mode_next},
-    {":", map_command_mode}, {"0", map_line_start}, {"$", map_line_end}, {"gg", map_doc_start}, {"G", map_doc_end},
+struct Mapping mappings_list[] = {
+    {"i", cmd_insert_mode_prev},
+    {"a", cmd_insert_mode_next},
+    {":", cmd_command_mode},
+    {"h", cmd_left},
+    {"l", cmd_right},
+    {"j", cmd_down},
+    {"k", cmd_up},
+    {"0", cmd_line_start},
+    {"$", cmd_line_end},
+    {"gg", cmd_doc_start},
+    {"G", cmd_doc_end},
+    {KEY_SHIFT_TAB, cmd_doc_prev},
+    {"\t", cmd_doc_next},
+    {"G", cmd_doc_end},
+    {"dn", cmd_doc_new},
+    {"dc", cmd_doc_close},
 };
 
-void map_up(struct Context *ctx) {
+void cmd_up(struct Context *ctx) {
   struct Document *doc = ctx->docs[ctx->curr_doc];
   if (!doc->y) return;
   doc->x = MIN(doc->x, get_max_x(doc->buf[doc->y - 1]));
   doc->y--;
 }
 
-void map_down(struct Context *ctx) {
+void cmd_down(struct Context *ctx) {
   struct Document *doc = ctx->docs[ctx->curr_doc];
   if (doc->y == doc->len - 1) return;
   doc->x = MIN(doc->x, get_max_x(doc->buf[doc->y + 1]));
   doc->y++;
 }
 
-void map_left(struct Context *ctx) {
+void cmd_left(struct Context *ctx) {
   struct Document *doc = ctx->docs[ctx->curr_doc];
   if (!doc->x && !doc->y) return;
   if (!doc->x) {
@@ -31,7 +46,7 @@ void map_left(struct Context *ctx) {
   }
 }
 
-void map_right(struct Context *ctx) {
+void cmd_right(struct Context *ctx) {
   struct Document *doc = ctx->docs[ctx->curr_doc];
   size_t len = get_max_x(doc->buf[doc->y]);
   if (doc->x == len && doc->y == doc->len - 1) return;
@@ -43,38 +58,64 @@ void map_right(struct Context *ctx) {
   }
 }
 
-void map_command_mode(struct Context *ctx) { change_mode(ctx, MODE_COMMAND); }
-void map_insert_mode_prev(struct Context *ctx) { change_mode(ctx, MODE_INSERT); }
-
-void map_insert_mode_next(struct Context *ctx) {
-  struct Document *doc = ctx->docs[ctx->curr_doc];
-  if (doc->buf[doc->y]->len > 0) doc->x++;
-  change_mode(ctx, MODE_INSERT);
-}
-
-void map_line_start(struct Context *ctx) {
+void cmd_line_start(struct Context *ctx) {
   struct Document *doc = ctx->docs[ctx->curr_doc];
   doc->x = 0;
 }
 
-void map_line_end(struct Context *ctx) {
+void cmd_line_end(struct Context *ctx) {
   struct Document *doc = ctx->docs[ctx->curr_doc];
   doc->x = get_max_x(doc->buf[doc->y]);
 }
 
-void map_doc_start(struct Context *ctx) {
+void cmd_doc_start(struct Context *ctx) {
   struct Document *doc = ctx->docs[ctx->curr_doc];
   doc->x = MIN(doc->x, get_max_x(doc->buf[0]));
   doc->y = 0;
 }
 
-void map_doc_end(struct Context *ctx) {
+void cmd_doc_end(struct Context *ctx) {
   struct Document *doc = ctx->docs[ctx->curr_doc];
   doc->x = MIN(doc->x, get_max_x(doc->buf[doc->len - 1]));
   doc->y = doc->len - 1;
 }
 
-void add_map_node(struct Context *ctx, struct MappingNode *head, struct Mapping map) {
+void cmd_doc_prev(struct Context *ctx) {
+  if (!ctx->curr_doc) return;
+  ctx->curr_doc--;
+}
+
+void cmd_doc_next(struct Context *ctx) {
+  if (ctx->curr_doc == ctx->len - 1) return;
+  ctx->curr_doc++;
+}
+
+void cmd_doc_new(struct Context *ctx) {
+  if (!ctx->docs[ctx->len - 1]->path) return;
+  create_doc(ctx);
+  ctx->curr_doc = ctx->len - 1;
+}
+
+void cmd_doc_close(struct Context *ctx) {
+  if (ctx->len == 1) return;
+  ctx->len--;
+  for (int i = ctx->curr_doc; i < ctx->len; i++) {
+    ctx->docs[i] = ctx->docs[i + 1];
+  }
+  ctx->curr_doc = MIN(ctx->curr_doc, ctx->len - 1);
+}
+
+void cmd_command_mode(struct Context *ctx) { change_mode(ctx, MODE_COMMAND); }
+
+void cmd_insert_mode_prev(struct Context *ctx) { change_mode(ctx, MODE_INSERT); }
+
+void cmd_insert_mode_next(struct Context *ctx) {
+  struct Document *doc = ctx->docs[ctx->curr_doc];
+  if (doc->buf[doc->y]->len > 0) doc->x++;
+  change_mode(ctx, MODE_INSERT);
+}
+
+void add_mapping_node(struct Context *ctx, struct MappingNode *head, struct Mapping map) {
   struct MappingNode *curr = head;
   size_t len = strlen(map.cmd);
   for (int i = 0; i < len; i++) {
@@ -98,11 +139,11 @@ void add_map_node(struct Context *ctx, struct MappingNode *head, struct Mapping 
   }
 }
 
-void init_maps(struct Context *ctx) {
+void init_mappings(struct Context *ctx) {
   struct MappingNode *head = (struct MappingNode *)xcalloc(1, sizeof(struct MappingNode));
-  for (int i = 0; i < sizeof(maps_list) / sizeof(maps_list[0]); i++) {
-    struct Mapping map = maps_list[i];
-    add_map_node(ctx, head, map);
+  for (int i = 0; i < sizeof(mappings_list) / sizeof(mappings_list[0]); i++) {
+    struct Mapping map = mappings_list[i];
+    add_mapping_node(ctx, head, map);
   }
   ctx->map_head = ctx->map_curr = head;
 }
