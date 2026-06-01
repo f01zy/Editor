@@ -7,6 +7,8 @@
 #include <sys/time.h>
 #include <termios.h>
 
+#include "defines.h"
+
 enum CursorStyle {
   CURSOR_BLOCK_BLINKING = 1,
   CURSOR_BLOCK_STATIC,
@@ -52,9 +54,12 @@ enum BackgroundColor {
   BACKGROUND_DEFAULT = 49,
 };
 
-enum Mode { MODE_NORMAL, MODE_INSERT, MODE_COMMAND };
+enum EditorMode { EDITOR_MODE_NORMAL, EDITOR_MODE_INSERT, EDITOR_MODE_COMMAND, EDITOR_MODE_DIALOG };
+enum StatusMode { STATUS_MODE_NORMAL, STATUS_MODE_COMMAND, STATUS_MODE_MESSAGE, STATUS_MODE_DIALOG };
 enum RemoveResult { REMOVE_NOTHING, REMOVE_CHAR, REMOVE_LINE };
-enum StatusType { STATUS_INFO, STATUS_WARNING, STATUS_ERROR };
+enum MessageLevel { MESSAGE_INFO, MESSAGE_WARNING, MESSAGE_ERROR };
+
+struct Context;
 
 struct UI {
   bool is_line_numbers;
@@ -74,35 +79,50 @@ struct Cell {
   enum BackgroundColor bg;
 };
 
-struct Status {
-  char *msg;
-  enum StatusType type;
-};
-
 struct Document {
   int x, y;
   int offsetX, offsetY;
   size_t len, size;
   char *path;
+  bool is_changed;
   struct Line **buf;
 };
 
+struct StatusLine {
+  enum StatusMode mode;
+
+  struct {
+    char buf[MAX_STATUSLINE_BUFFER_SIZE];
+    enum MessageLevel level;
+  } msg;
+
+  struct {
+    char buf[MAX_STATUSLINE_BUFFER_SIZE];
+    void (*on_confirm)(struct Context *ctx);
+    void (*on_deny)(struct Context *ctx);
+  } dialog;
+
+  struct {
+    char buf[MAX_STATUSLINE_BUFFER_SIZE];
+    int len;
+  } cmd;
+};
+
 struct Context {
-  bool is_exit;
+  bool is_need_quit;
   size_t len, size, curr_doc;
-  struct timeval prev_frame_time;
-  struct MappingNode *map_head;
-  struct MappingNode *map_curr;
   struct Document **docs;
+  struct MappingNode *curr_mapping;
+  struct MappingNode *head_mapping;
   struct Cell **prev_frame;
   struct Cell **curr_frame;
-  struct Line *cmd;
-  struct Status *status;
   struct termios conf;
   struct termios backup;
   struct winsize win;
+  struct timeval prev_frame_time;
+  struct StatusLine status;
   struct UI ui;
-  enum Mode mode;
+  enum EditorMode mode;
 };
 
 struct MappingNode {
@@ -113,12 +133,12 @@ struct MappingNode {
 };
 
 struct Mapping {
-  char *cmd;
+  const char *cmd;
   void (*act)(struct Context *ctx);
 };
 
 struct Command {
-  char *cmd;
+  const char *cmd;
   void (*act)(struct Context *ctx, char *token);
 };
 

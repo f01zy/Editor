@@ -1,8 +1,8 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "editor_commands.h"
+#include "service.h"
 
 struct Command commands_list[] = {
     {"open", command_open},
@@ -10,41 +10,50 @@ struct Command commands_list[] = {
     {"save", command_save},
 };
 
-void command_quit(struct Context *ctx, char *token) { ctx->is_exit = true; }
+void command_quit(struct Context *ctx, char *token) {
+  for (int i = 0; i < ctx->len; i++) {
+    if (ctx->docs[i]->is_changed) {
+      set_statusline_dialog(ctx, "You have unsaved changed. Are you sure (Y/N): ", set_flag_to_quit, NULL);
+      return;
+    }
+  }
+  set_flag_to_quit(ctx);
+}
 
 void command_save(struct Context *ctx, char *token) {
   struct Document *doc = ctx->docs[ctx->curr_doc];
+  token = strtok(NULL, " ");
+  if (token) {
+    // TODO: создать новый файл
+  }
   int size = save_doc(doc);
   if (size == -1) {
-    set_status(ctx, "Failed to save file", STATUS_ERROR);
+    set_statusline_message(ctx, "Failed to save file", MESSAGE_ERROR);
     return;
   }
   char buf[MAX_BUFFER_SIZE];
   snprintf(buf, sizeof(buf), "\"%s\", %dB written", doc->path, size);
-  set_status(ctx, buf, STATUS_INFO);
+  set_statusline_message(ctx, buf, MESSAGE_INFO);
 }
 
 void command_open(struct Context *ctx, char *token) {
   struct Document *doc = ctx->docs[ctx->curr_doc];
   token = strtok(NULL, " ");
   bool is_opened = load_doc_data(doc, token);
-  if (!is_opened) {
-    set_status(ctx, "Failed to open file", STATUS_ERROR);
-    return;
-  }
+  if (!is_opened) set_statusline_message(ctx, "Failed to open file", MESSAGE_ERROR);
 }
 
 void command_unknown(struct Context *ctx, char *token) {
   char buf[MAX_BUFFER_SIZE];
   int len = snprintf(buf, sizeof(buf), "Not an editor command: %s", token);
-  set_status(ctx, buf, STATUS_ERROR);
+  set_statusline_message(ctx, buf, MESSAGE_ERROR);
 }
 
 void handle_command(struct Context *ctx) {
-  if (!ctx->cmd && !ctx->cmd->len) return;
-  char *cmd = (char *)xmalloc(ctx->cmd->len + 1);
-  memcpy(cmd, ctx->cmd->buf, ctx->cmd->len);
-  cmd[ctx->cmd->len] = '\0';
+  int len = ctx->status.cmd.len;
+  if (!len) return;
+  char cmd[MAX_STATUSLINE_BUFFER_SIZE];
+  memcpy(cmd, ctx->status.cmd.buf, sizeof(cmd));
   char *token = strtok(cmd, " ");
 
   bool is_found = false;
@@ -57,5 +66,4 @@ void handle_command(struct Context *ctx) {
   }
 
   if (!is_found) command_unknown(ctx, token);
-  free(cmd);
 }

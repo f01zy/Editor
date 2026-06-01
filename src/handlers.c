@@ -1,18 +1,21 @@
 #include "handlers.h"
+#include <ctype.h>
 
 void handle_normal_mode(struct Context *ctx, int ch) {
-  for (int i = 0; i < ctx->map_curr->len; i++) {
-    struct MappingNode *node = ctx->map_curr->nodes[i];
+  set_statusline_mode(ctx, STATUS_MODE_NORMAL);
+  for (int i = 0; i < ctx->curr_mapping->len; i++) {
+    struct MappingNode *node = ctx->curr_mapping->nodes[i];
     if (node->ch == ch) {
-      ctx->map_curr = node;
+      ctx->curr_mapping = node;
       break;
     }
   }
-  if (!ctx->map_curr->len) exec_curr_map(ctx);
+  if (!ctx->curr_mapping->len) exec_curr_mapping(ctx);
 }
 
 void handle_insert_mode(struct Context *ctx, int ch) {
   struct Document *doc = ctx->docs[ctx->curr_doc];
+  doc->is_changed = true;
   switch (ch) {
   case KEY_ENTER:
     line_break(doc);
@@ -33,7 +36,7 @@ void handle_insert_mode(struct Context *ctx, int ch) {
 
   case KEY_ESCAPE:
     if (doc->x) doc->x--;
-    change_mode(ctx, MODE_NORMAL);
+    set_editor_mode(ctx, EDITOR_MODE_NORMAL);
     break;
 
   default:
@@ -49,24 +52,34 @@ void handle_command_mode(struct Context *ctx, char ch) {
   switch (ch) {
   case KEY_ESCAPE:
     clear_cmd(ctx);
-    change_mode(ctx, MODE_NORMAL);
+    set_editor_mode(ctx, EDITOR_MODE_NORMAL);
+    set_statusline_mode(ctx, STATUS_MODE_NORMAL);
     break;
 
   case KEY_ENTER:
     handle_command(ctx);
+    if (ctx->mode != EDITOR_MODE_DIALOG) set_editor_mode(ctx, EDITOR_MODE_NORMAL);
     clear_cmd(ctx);
-    change_mode(ctx, MODE_NORMAL);
     break;
 
   case KEY_BACKSPACE:
-    if (ctx->cmd->len > 0) ctx->cmd->buf[--ctx->cmd->len] = '\0';
+    if (ctx->status.cmd.len > 0) ctx->status.cmd.buf[--ctx->status.cmd.len] = '\0';
     break;
 
   default:
-    if (ch >= 32 && ch <= 126 && ctx->cmd->len < ctx->cmd->size - 1) {
-      ctx->cmd->buf[ctx->cmd->len++] = ch;
-      ctx->cmd->buf[ctx->cmd->len] = '\0';
+    if (ch >= 32 && ch <= 126 && ctx->status.cmd.len < sizeof(ctx->status.cmd.buf) - 1) {
+      ctx->status.cmd.buf[ctx->status.cmd.len++] = ch;
+      ctx->status.cmd.buf[ctx->status.cmd.len] = '\0';
     }
     break;
   }
+}
+
+void handle_dialog_mode(struct Context *ctx, char ch) {
+  if (tolower(ch) == 'y') {
+    if (ctx->status.dialog.on_confirm) ctx->status.dialog.on_confirm(ctx);
+  } else {
+    if (ctx->status.dialog.on_deny) ctx->status.dialog.on_deny(ctx);
+  }
+  set_editor_mode(ctx, EDITOR_MODE_NORMAL);
 }

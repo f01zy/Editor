@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include "render.h"
+#include "types.h"
 
 void render_line(struct Context *ctx, struct Cell *buf, size_t len, int y) {
   move_cursor_yx(y, 0);
@@ -79,18 +80,28 @@ void render_line_numbers(struct Context *ctx, struct Document *doc, struct Cell 
 
 void render_statusline(struct Context *ctx, struct Document *doc, struct Cell **frame) {
   char buf[MAX_BUFFER_SIZE];
-  int len, y = ctx->win.ws_row - 1;
+  int len = 0, y = ctx->win.ws_row - 1;
   enum ForegroundColor fg = FOREGROUND_DEFAULT;
 
-  if (ctx->status) {
-    if (ctx->status->type == STATUS_ERROR) fg = FOREGROUND_RED;
-    if (ctx->status->type == STATUS_WARNING) fg = FOREGROUND_YELLOW;
-    len = snprintf(buf, sizeof(buf), "%s", ctx->status->msg);
-  } else if (ctx->mode == MODE_COMMAND) {
-    len = snprintf(buf, sizeof(buf), ":%s", ctx->cmd->buf);
-  } else {
-    char *mode = (ctx->mode == MODE_INSERT) ? "INSERT" : "NORMAL";
-    len = snprintf(buf, sizeof(buf), "-- %s -- %d/%d", mode, doc->y + 1, doc->x + 1);
+  switch (ctx->status.mode) {
+  case STATUS_MODE_MESSAGE:
+    if (ctx->status.msg.level == MESSAGE_ERROR) fg = FOREGROUND_RED;
+    if (ctx->status.msg.level == MESSAGE_WARNING) fg = FOREGROUND_YELLOW;
+    len = snprintf(buf, sizeof(buf), "%s", ctx->status.msg.buf);
+    break;
+
+  case STATUS_MODE_NORMAL:;
+    const char *label = ctx->mode == EDITOR_MODE_INSERT ? "INSERT" : "NORMAL";
+    len = snprintf(buf, sizeof(buf), "-- %s -- %d/%d", label, doc->y + 1, doc->x + 1);
+    break;
+
+  case STATUS_MODE_COMMAND:
+    len = snprintf(buf, sizeof(buf), ":%s", ctx->status.cmd.buf);
+    break;
+
+  case STATUS_MODE_DIALOG:
+    len = snprintf(buf, sizeof(buf), "%s", ctx->status.dialog.buf);
+    break;
   }
 
   for (int i = 0; i < ctx->win.ws_col; i++) {
@@ -137,8 +148,10 @@ void render(struct Context *ctx) {
   struct Cell **temp = ctx->prev_frame;
   ctx->prev_frame = ctx->curr_frame;
   ctx->curr_frame = temp;
-  if (ctx->mode == MODE_COMMAND) {
-    move_cursor_yx(ctx->win.ws_row - 1, ctx->cmd->len + 1);
+  if (ctx->mode == EDITOR_MODE_COMMAND) {
+    move_cursor_yx(ctx->win.ws_row - 1, ctx->status.cmd.len + 1);
+  } else if (ctx->mode == EDITOR_MODE_DIALOG) {
+    move_cursor_yx(ctx->win.ws_row - 1, strlen(ctx->status.dialog.buf));
   } else {
     int offsetX = get_line_number_margin(ctx);
     int offsetY = get_tabmenu_margin(ctx);

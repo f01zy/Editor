@@ -12,7 +12,8 @@ void init_editor(struct Context *ctx) {
   tcgetattr(STDIN_FILENO, &ctx->backup);
   init_context(ctx);
   tcsetattr(STDIN_FILENO, TCSANOW, &ctx->conf);
-  change_mode(ctx, MODE_NORMAL);
+  set_editor_mode(ctx, EDITOR_MODE_NORMAL);
+  set_statusline_mode(ctx, STATUS_MODE_NORMAL);
 }
 
 void quit_editor(struct Context *ctx) {
@@ -29,11 +30,6 @@ void init_context(struct Context *ctx) {
       .is_statusline = true,
       .is_tabmenu = true,
   };
-  struct Line *cmd = (struct Line *)xmalloc(sizeof(struct Line));
-  cmd->size = ctx->win.ws_col;
-  cmd->buf = (char *)xmalloc(cmd->size);
-  cmd->buf[0] = '\0';
-  ctx->cmd = cmd;
   ctx->curr_frame = create_frame(ctx);
   ctx->prev_frame = create_frame(ctx);
   ctx->ui = ui;
@@ -46,13 +42,14 @@ void init_context(struct Context *ctx) {
 }
 
 void clear_cmd(struct Context *ctx) {
-  ctx->cmd->buf[0] = '\0';
-  ctx->cmd->len = 0;
+  ctx->status.cmd.buf[0] = '\0';
+  ctx->status.cmd.len = 0;
 }
 
 void free_resources(struct Context *ctx) {
   for (int i = 0; i < ctx->win.ws_row; i++) {
     free(ctx->prev_frame[i]);
+    free(ctx->curr_frame[i]);
   }
   for (int i = 0; i < ctx->len; i++) {
     struct Document *doc = ctx->docs[i];
@@ -65,8 +62,7 @@ void free_resources(struct Context *ctx) {
   }
   free(ctx->docs);
   free(ctx->prev_frame);
-  free(ctx->cmd->buf);
-  free(ctx->cmd);
+  free(ctx->curr_frame);
 }
 
 void check_offset(struct Context *ctx, struct Document *doc) {
@@ -86,36 +82,16 @@ void check_offset(struct Context *ctx, struct Document *doc) {
   }
 }
 
-void change_mode(struct Context *ctx, enum Mode mode) {
+void set_editor_mode(struct Context *ctx, enum EditorMode mode) {
   enum CursorStyle style;
-  if (mode == MODE_NORMAL) style = CURSOR_BLOCK_BLINKING;
-  if (mode == MODE_INSERT) style = CURSOR_LINE_STATIC;
+  if (mode == EDITOR_MODE_NORMAL) style = CURSOR_BLOCK_BLINKING;
+  if (mode == EDITOR_MODE_INSERT) style = CURSOR_LINE_STATIC;
+  if (mode == EDITOR_MODE_COMMAND) style = CURSOR_LINE_STATIC;
   ctx->mode = mode;
   set_cursor_style(style);
 }
 
-void set_status(struct Context *ctx, char *msg, enum StatusType type) {
-  if (!msg) return;
-  if (ctx->status) {
-    free(ctx->status->msg);
-    free(ctx->status);
-  }
-  struct Status *status = (struct Status *)xmalloc(sizeof(struct Status));
-  status->type = type;
-  int len = strlen(msg);
-  char *buf = (char *)xmalloc(len + 1);
-  memcpy(buf, msg, len);
-  buf[len] = '\0';
-  status->msg = buf;
-  ctx->status = status;
-}
-
-void clear_status(struct Context *ctx) {
-  if (!ctx->status) return;
-  free(ctx->status->msg);
-  free(ctx->status);
-  ctx->status = NULL;
-}
+void set_statusline_mode(struct Context *ctx, enum StatusMode mode) { ctx->status.mode = mode; }
 
 struct Cell **create_frame(struct Context *ctx) {
   struct Cell **frame = (struct Cell **)xmalloc(ctx->win.ws_row * sizeof(struct Cell *));
@@ -125,7 +101,7 @@ struct Cell **create_frame(struct Context *ctx) {
   return frame;
 }
 
-char *get_file_name(char *path) {
+const char *get_file_name(char *path) {
   if (!path || path[0] == '\0') return "New buffer";
   char *slash = strrchr(path, '/');
   if (!slash) return path;
@@ -141,7 +117,27 @@ int getchar_nonblock(int ms) {
   return -1;
 }
 
-void exec_curr_map(struct Context *ctx) {
-  if (ctx->map_curr->act) ctx->map_curr->act(ctx);
-  ctx->map_curr = ctx->map_head;
+void exec_curr_mapping(struct Context *ctx) {
+  if (ctx->curr_mapping->act) ctx->curr_mapping->act(ctx);
+  ctx->curr_mapping = ctx->head_mapping;
 }
+
+void set_statusline_message(struct Context *ctx, const char *msg, enum MessageLevel level) {
+  set_statusline_mode(ctx, STATUS_MODE_MESSAGE);
+  int len = MIN(strlen(msg), sizeof(ctx->status.msg.buf) - 1);
+  memcpy(ctx->status.msg.buf, msg, len);
+  ctx->status.msg.buf[len] = '\0';
+  ctx->status.msg.level = level;
+}
+
+void set_statusline_dialog(struct Context *ctx, const char *question, void (*on_confirm)(struct Context *), void (*on_deny)(struct Context *)) {
+  set_editor_mode(ctx, EDITOR_MODE_DIALOG);
+  set_statusline_mode(ctx, STATUS_MODE_DIALOG);
+  int len = MIN(strlen(question), sizeof(ctx->status.dialog.buf) - 1);
+  memcpy(ctx->status.dialog.buf, question, len);
+  ctx->status.dialog.buf[len] = '\0';
+  ctx->status.dialog.on_confirm = on_confirm;
+  ctx->status.dialog.on_deny = on_deny;
+}
+
+void set_flag_to_quit(struct Context *ctx) { ctx->is_need_quit = true; }
