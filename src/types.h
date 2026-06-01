@@ -5,7 +5,6 @@
 #include <stddef.h>
 #include <sys/ioctl.h>
 #include <termios.h>
-#include <time.h>
 
 enum CursorStyle {
   CURSOR_BLOCK_BLINKING = 1,
@@ -90,7 +89,7 @@ struct Document {
 struct Context {
   bool is_exit;
   size_t len, size, curr_doc;
-  clock_t last_frame;
+  double prev_frame_time;
   struct MappingNode *map_head;
   struct MappingNode *map_curr;
   struct Document **docs;

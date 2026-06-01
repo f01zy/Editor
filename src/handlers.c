@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "handlers.h"
 
@@ -8,24 +9,23 @@ void handle_normal_mode(struct Context *ctx, int ch) {
   struct Document *doc = ctx->docs[ctx->curr_doc];
   struct Line *line = doc->buf[doc->y];
   size_t len = get_max_x(line);
-  clock_t now = clock();
-  clock_t delta = now - ctx->last_frame;
-  ctx->last_frame = now;
-  if (delta > 10000 || !ctx->map_curr->len) {
+  double now = clock();
+  double delta = (now - ctx->prev_frame_time) / (CLOCKS_PER_SEC / 1000);
+  ctx->prev_frame_time = now;
+  if (delta > 100) {
     if (ctx->map_curr->act) ctx->map_curr->act(ctx);
     ctx->map_curr = ctx->map_head;
-  } else {
-    bool is_found = false;
-    for (int i = 0; i < ctx->map_curr->len; i++) {
-      struct MappingNode *curr_node = ctx->map_curr->nodes[i];
-      if (curr_node->ch == ch) {
-        is_found = true;
-        ctx->map_curr = curr_node;
-        break;
-      }
-    }
-    if (!is_found) ctx->map_curr = ctx->map_head;
+    return;
   }
+  for (int i = 0; i < ctx->map_curr->len; i++) {
+    struct MappingNode *curr_node = ctx->map_curr->nodes[i];
+    if (curr_node->ch == ch) {
+      ctx->map_curr = curr_node;
+      break;
+    }
+  }
+  if (!ctx->map_curr->len) ctx->map_curr->act(ctx);
+  ctx->map_curr = ctx->map_head;
 }
 
 void handle_insert_mode(struct Context *ctx, int ch) {

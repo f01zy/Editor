@@ -11,7 +11,7 @@ int main(int argc, char **argv) {
     return 1;
   }
   init_editor(&ctx);
-  init_mappings(&ctx);
+  init_maps(&ctx);
   if (argc == 2) {
     struct Document *doc = create_doc(&ctx);
     load_doc_data(doc, argv[1]);
